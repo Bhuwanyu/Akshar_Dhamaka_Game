@@ -1,0 +1,2037 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="अक्षर धमाका">
+<meta name="theme-color" content="#74c5ff">
+<style>
+html { box-sizing: border-box; height: 100%; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); background: #74c5ff; }
+*, *::before, *::after { box-sizing: inherit; }
+body { margin: 0; font-size: 14px; }
+img { max-width: 100%; }
+</style>
+<title>अक्षर धमाका</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Fredoka:wght@500;600;700&family=Lilita+One&display=swap">
+<style>
+/* Layout: a sunny cartoon arcade. HUD on top, sky playfield with candy-box letters and a
+   friendly cannon under a hazard-tape danger bar, candy keypad underneath.
+   One bright look on purpose, so no dark-mode variant. */
+:root {
+  color-scheme: light;
+  --ink: #2b2350;
+  --ink-2: #6a6299;
+  --card: #ffffff;
+  --sky-1: #74c5ff;
+  --sky-2: #b7a4ff;
+  --pink: #ff5fa2;    --pink-d: #d1347a;
+  --yellow: #ffd23f;  --yellow-d: #dfa400;
+  --mint: #34d399;    --mint-d: #16a571;
+  --blue: #4d9bff;    --blue-d: #2a6bd1;
+  --purple: #9b5de5;  --purple-d: #6d33b5;
+  --orange: #ff7a45;  --orange-d: #d4531c;
+  --red: #ff4d6d;
+  --display: "Lilita One", "Arial Black", Impact, system-ui, sans-serif;
+  --ui: "Fredoka", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --deva: "Baloo 2", "Nirmala UI", "Mangal", "Noto Sans Devanagari", sans-serif;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: linear-gradient(160deg, var(--sky-1), var(--sky-2));
+  color: var(--ink);
+  font-family: var(--ui);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* A fixed 9:16 portrait frame (16:9 held upright): sized from both the screen's width and
+   its height, so it is exactly 9:16 everywhere and never stretched. Sizes inside use
+   cqw/cqh, which are relative to this frame. */
+:root {
+  --screen-h: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  --screen-h: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  --gap-out: 0px;   /* space around the frame */
+}
+.app {
+  box-sizing: border-box;
+  width: min(calc(100vw - var(--gap-out) * 2), calc((var(--screen-h) - var(--gap-out) * 2) * 9 / 16));
+  height: min(calc(var(--screen-h) - var(--gap-out) * 2), calc((100vw - var(--gap-out) * 2) * 16 / 9));
+  flex-shrink: 0;
+  container-type: size;
+  padding-inline: 16px;
+  padding-block: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (min-aspect-ratio: 3 / 4) {
+  /* Wider windows (tablets, desktops): show the frame as a chunky toy phone. */
+  :root { --gap-out: 16px; }
+  .app { border: 4px solid #fff; border-radius: 34px; background: rgba(255, 255, 255, .22); box-shadow: 0 10px 0 rgba(43, 35, 80, .15); }
+}
+
+.app { position: relative; }
+
+/* Hindi interface: the arcade fonts have no Devanagari, so everything uses the rounded
+   Hindi font (it has Latin letters and numbers too). */
+body.lang-hi {
+  --display: "Baloo 2", "Nirmala UI", "Mangal", sans-serif;
+  --ui: "Baloo 2", "Nirmala UI", "Mangal", ui-rounded, system-ui, sans-serif;
+}
+body.lang-hi .logo, body.lang-hi .play-big, body.lang-hi .btn, body.lang-hi .big-score,
+body.lang-hi .page-title, body.lang-hi .stat .value, body.lang-hi .toast .kicker { font-weight: 800; }
+body.lang-hi .stat .label { letter-spacing: 0; font-size: 12px; }
+body.lang-hi .play-big, body.lang-hi .btn { padding-top: .25em; }
+/* Language switch, top right of the main menu */
+.lang-btn {
+  position: absolute !important; top: 1.6cqh; right: 14px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--deva); font-weight: 800; font-size: max(14px, 3.6cqw);
+  padding: .6cqh 12px; border-radius: 99px; cursor: pointer;
+  background: var(--card); color: var(--purple); border: 0; border-bottom: 4px solid rgba(43, 35, 80, .2);
+}
+.lang-btn svg { width: 1.1em; height: 1.1em; }
+.lang-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+
+/* ---------- Main menu: covers the whole frame ---------- */
+.menu {
+  position: absolute; inset: 0; z-index: 5;
+  border-radius: inherit; overflow-x: hidden; overflow-y: auto;
+  background: linear-gradient(170deg, var(--sky-1), var(--sky-2));
+  display: flex; flex-direction: column; align-items: center;
+  padding: 5cqh 18px 3cqh; gap: 2cqh; text-align: center;
+}
+.menu > * { position: relative; z-index: 1; }
+.menu .decor { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.menu .decor span {
+  position: absolute; display: grid; place-items: center;
+  width: 9cqw; height: 9cqw; border-radius: 22%;
+  font-family: var(--deva); font-weight: 800; font-size: 5.2cqw; padding-top: .6cqw; color: #fff;
+  border: 2px solid var(--ink); border-bottom-width: 4px; opacity: .55;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .2);
+  animation: drift 7s ease-in-out infinite alternate;
+}
+@keyframes drift { from { transform: translateY(-1.5cqh) rotate(var(--r0)); } to { transform: translateY(1.5cqh) rotate(var(--r1)); } }
+.menu .logo { font-size: 13.5cqw; margin-top: 1cqh; }
+.menu .tagline { margin: 0; font-size: max(14px, 3.8cqw); font-weight: 600; color: var(--ink); max-width: 30ch; }
+.menu .best { font-family: var(--display); font-size: max(14px, 4cqw); color: var(--ink); background: rgba(255, 255, 255, .7); padding: .5cqh 14px; border-radius: 99px; }
+.menu .best b { color: var(--pink); font-weight: 400; }
+.play-big {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-family: var(--display); font-size: max(26px, 8cqw); letter-spacing: .04em;
+  padding: 1.4cqh 12cqw; border: 0; border-radius: 22px; cursor: pointer;
+  background: var(--pink); color: #fff; border-bottom: 8px solid var(--pink-d);
+  text-shadow: 0 3px 0 var(--pink-d);
+  animation: nudge 2s ease-in-out infinite;
+}
+.play-big svg { width: .8em; height: .8em; filter: drop-shadow(0 3px 0 var(--pink-d)); }
+.play-big:active { transform: translateY(5px); border-bottom-width: 3px; animation: none; }
+/* My collection: the same big button as PLAY, in purple, right under it */
+.menu .play-big { justify-content: center; min-width: 72%; }
+.play-big.collect {
+  font-size: max(20px, 6cqw); padding-top: 1.1cqh; padding-bottom: 1.1cqh; margin-top: -0.6cqh;
+  background: var(--purple); border-bottom-color: var(--purple-d); text-shadow: 0 3px 0 var(--purple-d); animation: none;
+}
+.play-big.collect svg { filter: drop-shadow(0 3px 0 var(--purple-d)); }
+.play-big.collect .num { font-size: .7em; opacity: .85; }
+.mode-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.mode-card {
+  display: flex; flex-direction: column; align-items: center; gap: .4cqh;
+  padding: 1.3cqh 6px 1.1cqh; border-radius: 16px; cursor: pointer;
+  background: var(--card); color: var(--ink); border: 3px solid transparent; border-bottom: 6px solid rgba(43, 35, 80, .18);
+  font-family: var(--ui);
+}
+.mode-card .g { font-family: var(--deva); font-weight: 800; font-size: max(17px, 5cqw); line-height: 1.1; color: var(--purple); }
+.mode-card .n { font-family: var(--deva); font-weight: 800; font-size: max(15px, 4.2cqw); line-height: 1.1; }
+.mode-card .d { font-size: max(11px, 2.9cqw); color: var(--ink-2); line-height: 1.25; font-weight: 500; }
+.mode-card.name-only { justify-content: center; }
+.mode-card.name-only .n { font-size: max(17px, 5cqw); color: var(--purple); text-align: center; }
+.mode-card[aria-pressed="true"] { border-color: var(--yellow); background: #fffbe6; border-bottom-color: var(--yellow-d); transform: translateY(-2px); }
+.menu-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.menu-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--ui); font-weight: 600; font-size: max(14px, 3.7cqw);
+  padding: 1cqh 14px; border-radius: 14px; cursor: pointer;
+  background: var(--card); color: var(--ink); border: 0; border-bottom: 4px solid rgba(43, 35, 80, .2);
+}
+.menu-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+.menu-btn svg { width: 1.15em; height: 1.15em; color: var(--purple); }
+.menu-btn .num { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.menu .spacer { flex: 1; }
+.menu .foot { font-size: 12px; color: var(--ink-2); font-weight: 500; }
+/* How to play */
+.how { display: flex; flex-direction: column; gap: 1.4cqh; width: 100%; text-align: left; }
+.how .step { display: flex; gap: 12px; align-items: center; background: var(--card); border-radius: 16px; padding: 1.4cqh 14px; border-bottom: 4px solid rgba(43, 35, 80, .12); }
+.how .num { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-family: var(--display); font-size: 19px; color: #fff; background: var(--blue); border-bottom: 3px solid var(--blue-d); }
+.how .step:nth-child(2) .num { background: var(--pink); border-color: var(--pink-d); }
+.how .step:nth-child(3) .num { background: var(--orange); border-color: var(--orange-d); }
+.how .step:nth-child(4) .num { background: var(--mint); border-color: var(--mint-d); }
+.how .t { font-size: max(14px, 3.8cqw); font-weight: 500; line-height: 1.35; color: var(--ink); }
+.how .t b { font-family: var(--deva); font-weight: 800; }
+.menu .page-title { font-family: var(--display); font-size: 9cqw; color: var(--purple); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); margin-top: 1cqh; }
+.menu .dict-list { max-height: none; }
+/* End-of-game and pause screens scale with the frame, like the menu */
+.btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.field .overlay .logo { font-size: max(34px, 12cqw); }
+.field .overlay .big-score { font-size: max(48px, 15cqw); }
+.field .overlay .small { font-size: max(13px, 3.6cqw); }
+.field .overlay .btn { font-size: max(22px, 6.5cqw); padding: 1.2cqh 9cqw; }
+.field .overlay .btn-2 { font-size: max(15px, 4cqw); padding: 1cqh 4cqw; }
+@media (prefers-reduced-motion: reduce) { .menu .decor span, .play-big { animation: none; } }
+
+/* HUD */
+.hud { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.stat { display: flex; flex-direction: column; gap: 2px; line-height: 1; }
+.stat .label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.stat .value { font-family: var(--display); font-size: 23px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.stat .value.score { color: var(--pink); }
+.stat .value.combo { color: var(--purple); }
+.bump { animation: bump .25s ease-out; }
+@keyframes bump { 40% { transform: scale(1.3); } }
+.hud-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.lives { display: flex; gap: 2px; height: 22px; align-items: center; }
+.heart { width: 18px; height: 18px; display: block; }
+.heart path { fill: var(--red); stroke: var(--ink); stroke-width: 2; }
+.heart { animation: beat 1.1s ease-in-out infinite; }
+.heart.lost { animation: none; }
+.heart.lost path { fill: #e4def7; stroke: #b9b0dc; }
+.heart.gone { animation: burstHeart .5s ease-out; }
+@keyframes beat { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.15); } }
+@keyframes burstHeart { 30% { transform: scale(1.6) rotate(-15deg); } }
+.icon-btn {
+  width: 38px; height: 38px; display: grid; place-items: center;
+  background: var(--card); color: var(--ink);
+  border: 0; border-bottom: 4px solid rgba(43, 35, 80, .22); border-radius: 13px; cursor: pointer; padding: 0;
+}
+.icon-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:focus-visible, .btn:focus-visible, .btn-2:focus-visible, .key:focus-visible, .mode:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* Playfield */
+.field {
+  position: relative; flex: 1; min-height: 0;
+  border-radius: 22px; overflow: hidden;
+  border: 4px solid #fff;
+  background: var(--sky-1);
+  box-shadow: 0 6px 0 rgba(43, 35, 80, .15);
+}
+canvas { display: block; width: 100%; height: 100%; }
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 12px;
+  padding: 20px; text-align: center; overflow-y: auto; overflow-x: hidden;
+  background: rgba(255, 255, 255, .72);
+  backdrop-filter: blur(6px);
+}
+.logo { font-family: var(--display); font-size: clamp(36px, 11cqw, 54px); line-height: .95; letter-spacing: .01em; }
+.logo .w { display: block; white-space: nowrap; }
+.logo .c { display: inline-block; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); animation: hop 2.4s ease-in-out infinite; }
+@keyframes hop { 0%, 80%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 88% { transform: translateY(-8px) rotate(var(--r, 0deg)); } }
+.overlay p { margin: 0; max-width: 30ch; font-size: 15px; line-height: 1.4; color: var(--ink); font-weight: 500; }
+.overlay .small { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.big-score { font-family: var(--display); font-size: 56px; color: var(--yellow); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); line-height: 1; font-variant-numeric: tabular-nums; }
+.btn {
+  font-family: var(--display); font-size: 22px; letter-spacing: .03em;
+  padding: 10px 34px; border: 0; border-radius: 18px; cursor: pointer;
+  background: var(--pink); color: #fff;
+  border-bottom: 6px solid var(--pink-d);
+  text-shadow: 0 2px 0 var(--pink-d);
+  animation: nudge 2s ease-in-out infinite;
+}
+.btn:active { transform: translateY(4px); border-bottom-width: 2px; animation: none; }
+@keyframes nudge { 0%, 85%, 100% { transform: scale(1); } 92% { transform: scale(1.07) rotate(-2deg); } }
+.btn-2 {
+  font-family: var(--ui); font-weight: 600; font-size: 15px;
+  padding: 7px 18px; border-radius: 14px; cursor: pointer;
+  background: var(--card); color: var(--purple); border: 0; border-bottom: 4px solid rgba(43, 35, 80, .2);
+}
+.btn-2:active { transform: translateY(2px); border-bottom-width: 2px; }
+.btn-2 .deva { font-family: var(--deva); }
+.btn-2 .num { font-variant-numeric: tabular-nums; margin-left: 6px; color: var(--ink-2); }
+
+/* Mode picker */
+.modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.mode {
+  font-family: var(--deva); font-weight: 600; font-size: 15px; line-height: 1.2;
+  padding: 7px 12px; border-radius: 14px; cursor: pointer;
+  background: var(--card); color: var(--ink-2); border: 0; border-bottom: 4px solid rgba(43, 35, 80, .18);
+}
+.mode .glyph { font-weight: 800; margin-right: 6px; color: inherit; }
+.mode[aria-pressed="true"] { background: var(--yellow); color: var(--ink); border-bottom-color: var(--yellow-d); }
+
+/* Pop-up banner: new stage or achievement */
+.toast {
+  position: absolute; left: 14px; right: 14px; top: 12px;
+  padding: 10px 14px; border-radius: 18px; text-align: center;
+  background: var(--card); border: 4px solid var(--blue); box-shadow: 0 5px 0 rgba(43, 35, 80, .15);
+  opacity: 0; transform: translateY(-30px) scale(.8); transition: opacity .25s, transform .4s cubic-bezier(.3, 1.6, .5, 1);
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.achievement { border-color: var(--yellow); background: #fffbe6; }
+.toast .kicker { font-family: var(--display); font-size: 12px; letter-spacing: .12em; color: var(--blue); }
+.toast.achievement .kicker { color: var(--orange); }
+.toast .title { font-family: var(--deva); font-weight: 800; font-size: 25px; line-height: 1.2; color: var(--ink); }
+.toast .sub { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: opacity .2s; transform: none; } }
+
+/* Dictionary */
+.dict-head { font-family: var(--deva); font-weight: 800; font-size: 32px; color: var(--purple); line-height: 1.1; }
+.dict-bar { width: min(240px, 80%); height: 12px; background: #fff; border-radius: 99px; overflow: hidden; box-shadow: inset 0 2px 0 rgba(43, 35, 80, .12); }
+.dict-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--pink), var(--yellow)); border-radius: 99px; }
+.dict-list { box-sizing: border-box; width: 100%; flex: 1 1 auto; min-height: 120px; overflow-y: auto; text-align: left; padding-right: 4px; }
+.dict-cat { font-family: var(--deva); font-weight: 800; font-size: 15px; color: var(--ink); margin: 12px 0 5px; }
+.dict-cat .done { color: var(--mint-d); margin-left: 6px; }
+.dict-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; font-family: var(--deva); font-weight: 800; font-size: 19px; padding-top: 3px; color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+.chip.locked { background: #ece8fb !important; color: #c3bbe6; text-shadow: none; }
+.drow { display: flex; align-items: center; gap: 10px; padding: 6px 12px; margin-bottom: 4px; border-radius: 14px; background: var(--card); border-bottom: 3px solid rgba(43, 35, 80, .1); }
+.drow.locked { background: rgba(255, 255, 255, .5); border-bottom-color: transparent; }
+.drow .w { font-family: var(--deva); font-weight: 800; font-size: 20px; min-width: 100px; color: var(--ink); }
+.drow.locked .w { color: #c3bbe6; letter-spacing: .2em; }
+.drow .m { flex: 1; min-width: 0; font-size: 14px; color: var(--ink-2); font-weight: 500; }
+.drow .n { font-family: var(--display); font-size: 14px; color: var(--pink); font-variant-numeric: tabular-nums; }
+
+/* Collection chips keep their candy colours */
+.chip.c0 { background: var(--pink); }
+.chip.c1 { background: var(--orange); }
+.chip.c2 { background: var(--yellow); color: var(--ink); text-shadow: 0 2px 0 rgba(255, 255, 255, .5); }
+.chip.c3 { background: var(--mint); }
+.chip.c4 { background: var(--blue); }
+.chip.c5 { background: var(--purple); }
+
+/* Keypad: always 8 keys in 2 rows of 4, every key the same colour (change --key / --key-d
+   to recolour them all). Keys stay in place; one changes only when it has to. */
+.keys {
+  --key: var(--blue); --key-d: var(--blue-d);
+  flex: 0 0 18cqh; min-height: 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+.key {
+  min-width: 0; min-height: 0;
+  padding: 0;
+  font-family: var(--deva); font-weight: 800;
+  font-size: min(8cqw, 5cqh);
+  padding-top: 5px;
+  color: #fff;
+  background: var(--key);
+  border: 0; border-bottom: 6px solid var(--key-d);
+  border-radius: 16px;
+  cursor: pointer;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .22);
+  transition: transform .08s;
+}
+.key.long { font-size: min(6.4cqw, 4cqh); }
+/* मात्रा mode: one line of matra keys on top of every व्यंजन (9 x 4). Tap a व्यंजन, then a matra. */
+.keys.matra { flex-basis: 30cqh; display: flex; flex-direction: column; gap: 8px; }
+.keys.matra .kgrid { display: grid; gap: 5px; min-height: 0; }
+/* व्यंजन: 4 rows; each row holds whole sections (वर्ग), with a wider gap between sections. */
+.keys.matra .cons { flex: 4 1 0; min-height: 0; display: flex; flex-direction: column; gap: 5px; }
+.keys.matra .krow { flex: 1 1 0; min-height: 0; display: flex; gap: 9px; }
+.keys.matra .ksec { flex: 1 1 0; min-width: 0; display: flex; gap: 3px; }
+.keys.matra .ksec .key { flex: 1 1 0; }
+.keys.matra .cons .key.locked { opacity: .28; filter: grayscale(.7); }
+.keys.matra .mats { flex: 1.1 1 0; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.keys.matra .key { font-size: min(5.4cqw, 3.3cqh); padding-top: 3px; border-bottom-width: 4px; border-radius: 10px; }
+.keys.matra .mats .key { font-size: min(4.8cqw, 3.3cqh); border-radius: 8px; }
+.keys.matra .mats .key.long { font-size: min(3.6cqw, 2.6cqh); }
+.keys.matra .key.picked { background: #fff; color: var(--blue-d); text-shadow: none; transform: translateY(2px); border-bottom-width: 2px; }
+.keys.matra .mats .key.idle { opacity: .55; }
+/* Once a व्यंजन is picked, the matra line turns yellow: "now choose a matra". */
+.keys.matra .mats .key:not(.idle) { background: var(--yellow); border-bottom-color: var(--yellow-d); color: var(--ink); text-shadow: none; }
+.key.new { animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes pop { from { transform: scale(.4) rotate(-8deg); opacity: .3; } }
+.key.pressed { transform: translateY(3px) scale(.96); }
+.keys .key.hit { background: #fff; color: var(--pink); text-shadow: none; animation: hitPop .2s ease-out; }
+.keys .key.miss { background: var(--red); color: #fff; border-bottom-color: #c22a46; animation: shake .25s; }
+@keyframes hitPop { 50% { transform: scale(1.12); } }
+@keyframes shake { 20% { translate: -5px 0; } 60% { translate: 5px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .key.new, .key.miss, .key.hit, .btn, .logo .c, .heart, .heart.gone, .bump { animation: none; }
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="hud">
+    <div class="stat"><span class="label" id="lblScore">Score</span><span class="value score" id="score">0</span></div>
+    <div class="stat"><span class="label" id="lblLevel">Level</span><span class="value" id="level">1</span></div>
+    <div class="stat"><span class="label" id="lblCombo">Combo</span><span class="value combo" id="combo">x1</span></div>
+    <div class="stat"><span class="label" id="lblLives">Lives</span><span class="lives" id="lives" role="img" aria-label="5 lives"></span></div>
+    <div class="hud-right">
+      <button class="icon-btn" id="muteBtn" aria-label="Mute sound"></button>
+      <button class="icon-btn" id="pauseBtn" aria-label="Pause">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="field" id="field">
+    <canvas id="game"></canvas>
+    <div class="toast" id="toast" aria-live="polite"><div class="kicker" id="toastKicker"></div><div class="title" id="toastTitle"></div><div class="sub" id="toastSub"></div></div>
+    <div class="overlay" id="overlay"></div>
+  </main>
+
+  <nav class="keys" id="keys" aria-label="Letter keys"></nav>
+
+  <section class="menu" id="menu" aria-label="Main menu"></section>
+</div>
+
+<script>
+(() => {
+  // =====================================================================
+  // Letters and words
+  // =====================================================================
+  const SWAR = ['अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ऋ', 'ए', 'ऐ', 'ओ', 'औ'];
+  const VYANJAN_ROWS = [
+    ['क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज', 'झ', 'ञ'],
+    ['ट', 'ठ', 'ड', 'ढ', 'ण', 'त', 'थ', 'द', 'ध', 'न'],
+    ['प', 'फ', 'ब', 'भ', 'म', 'य', 'र', 'ल', 'व'],
+    ['श', 'ष', 'स', 'ह', 'क्ष', 'त्र', 'ज्ञ'],
+  ];
+  const VYANJAN = VYANJAN_ROWS.flat();
+  const HI_ALL = [...SWAR, ...VYANJAN];
+  // Barakhadi: the plain letter, its ten matras and the anusvara (क का कि ... कौ कं).
+  const MATRAS = ['', 'ा', 'ि', 'ी', 'ु', 'ू', 'े', 'ै', 'ो', 'ौ', 'ं'];
+  // ङ and ञ almost never take a matra, so they never fall as syllables.
+  const NO_MATRA = ['ङ', 'ञ'];
+  // मात्रा शूटर: the व्यंजन in their traditional sections. Level 1 opens क वर्ग, and every
+  // level opens the next section. ROWS says which sections share a keypad row.
+  const MATRA_SECTIONS = [
+    { hi: 'क वर्ग', en: 'Ka varg', letters: ['क', 'ख', 'ग', 'घ', 'ङ'] },
+    { hi: 'च वर्ग', en: 'Cha varg', letters: ['च', 'छ', 'ज', 'झ', 'ञ'] },
+    { hi: 'ट वर्ग', en: 'Ta varg', letters: ['ट', 'ठ', 'ड', 'ढ', 'ण'] },
+    { hi: 'त वर्ग', en: 'Ta varg (soft)', letters: ['त', 'थ', 'द', 'ध', 'न'] },
+    { hi: 'प वर्ग', en: 'Pa varg', letters: ['प', 'फ', 'ब', 'भ', 'म'] },
+    { hi: 'अंतःस्थ व्यंजन', en: 'Semivowels', letters: ['य', 'र', 'ल', 'व'] },
+    { hi: 'ऊष्म व्यंजन', en: 'Sibilants', letters: ['श', 'ष', 'स', 'ह'] },
+    { hi: 'संयुक्त व्यंजन', en: 'Conjuncts', letters: ['क्ष', 'त्र', 'ज्ञ', 'श्र'] },
+    { hi: 'उत्क्षिप्त व्यंजन', en: 'Flapped', letters: ['ड़', 'ढ़'] },   // ड़ ढ़
+  ];
+  const MATRA_ROWS = [[0, 1], [2, 3], [4, 5], [6, 7, 8]];
+  const MATRA_LETTERS = MATRA_SECTIONS.flatMap(s => s.letters);
+
+  // Splits a word into aksharas (written syllables): a base letter plus its matras, nukta,
+  // anusvara or chandrabindu, joined through a halant for conjuncts. बिल्ली -> बि ल्ली.
+  function aksharas(word) {
+    const isMark = c => /[ऀ-ःऺ-़ा-ॏ॑-ॗॢॣ‌‍]/.test(c);
+    const parts = [];
+    let cur = '', prev = '';
+    for (const c of word) {
+      if (!isMark(c) && prev !== '्' && cur) { parts.push(cur); cur = ''; }
+      cur += c;
+      prev = c;
+    }
+    if (cur) parts.push(cur);
+    return parts;
+  }
+
+  const WORD_DATA = [
+    ['जानवर · Animals', 'खरगोश=Rabbit बिल्ली=Cat कुत्ता=Dog हाथी=Elephant शेर=Lion बंदर=Monkey घोड़ा=Horse गाय=Cow बकरी=Goat भालू=Bear हिरण=Deer मछली=Fish तोता=Parrot मोर=Peacock चूहा=Mouse ऊँट=Camel कछुआ=Tortoise मेंढक=Frog तितली=Butterfly चिड़िया=Bird साँप=Snake भेड़=Sheep गधा=Donkey मुर्गा=Rooster बत्तख=Duck उल्लू=Owl कौआ=Crow लोमड़ी=Fox भेड़िया=Wolf जिराफ़=Giraffe'],
+    ['खाना · Food', 'आम=Mango केला=Banana सेब=Apple अंगूर=Grapes संतरा=Orange अनार=Pomegranate पपीता=Papaya तरबूज़=Watermelon नारियल=Coconut रोटी=Bread दूध=Milk पानी=Water चावल=Rice दाल=Lentils मिठाई=Sweets गाजर=Carrot आलू=Potato टमाटर=Tomato मक्खन=Butter शहद=Honey चाय=Tea अंडा=Egg नमक=Salt चीनी=Sugar'],
+    ['शरीर · Body', 'आँख=Eye नाक=Nose कान=Ear हाथ=Hand पैर=Foot मुँह=Mouth दाँत=Tooth बाल=Hair सिर=Head उँगली=Finger'],
+    ['प्रकृति · Nature', 'सूरज=Sun चाँद=Moon तारा=Star बादल=Cloud बारिश=Rain पेड़=Tree फूल=Flower पत्ता=Leaf नदी=River पहाड़=Mountain समुद्र=Sea आकाश=Sky हवा=Wind आग=Fire धरती=Earth जंगल=Forest बर्फ़=Snow इंद्रधनुष=Rainbow'],
+    ['घर · Home', 'घर=House दरवाज़ा=Door खिड़की=Window कुर्सी=Chair मेज़=Table किताब=Book कलम=Pen घड़ी=Clock चाबी=Key बिस्तर=Bed कपड़ा=Cloth जूता=Shoe टोपी=Cap छाता=Umbrella गेंद=Ball पतंग=Kite खिलौना=Toy दीपक=Lamp थाली=Plate गिलास=Glass'],
+    ['लोग · People', 'पिता=Father दादी=Grandmother नाना=Grandfather भाई=Brother बहन=Sister दोस्त=Friend बच्चा=Child राजा=King रानी=Queen किसान=Farmer डॉक्टर=Doctor शिक्षक=Teacher'],
+    ['जगह और सवारी · Places & travel', 'गाड़ी=Car रेल=Train नाव=Boat जहाज़=Ship साइकिल=Bicycle स्कूल=School बाज़ार=Market गाँव=Village शहर=City मंदिर=Temple'],
+    ['रंग · Colours', 'लाल=Red पीला=Yellow हरा=Green नीला=Blue काला=Black सफ़ेद=White गुलाबी=Pink'],
+    ['गिनती · Numbers', 'एक=One तीन=Three चार=Four पाँच=Five छह=Six सात=Seven आठ=Eight दस=Ten'],
+    // More words. Same category name = added to that category. Use _ for a space in a meaning.
+    ['जानवर · Animals', 'बाघ=Tiger चीता=Cheetah गैंडा=Rhino ज़ेबरा=Zebra हंस=Swan बगुला=Heron कबूतर=Pigeon गिलहरी=Squirrel मकड़ी=Spider मधुमक्खी=Honeybee चींटी=Ant मच्छर=Mosquito केकड़ा=Crab मगरमच्छ=Crocodile सुअर=Pig भैंस=Buffalo बैल=Ox बछड़ा=Calf मेमना=Lamb पिल्ला=Puppy गौरैया=Sparrow कोयल=Cuckoo सारस=Crane जुगनू=Firefly घोंघा=Snail छिपकली=Lizard'],
+    ['खाना · Food', 'दही=Yogurt खीर=Rice_pudding हलवा=Halwa पनीर=Cottage_cheese मूली=Radish प्याज़=Onion लहसुन=Garlic अदरक=Ginger मटर=Peas भिंडी=Okra बैंगन=Brinjal गोभी=Cabbage कद्दू=Pumpkin खीरा=Cucumber नींबू=Lemon अमरूद=Guava नाशपाती=Pear आड़ू=Peach खजूर=Date बादाम=Almond काजू=Cashew मूँगफली=Peanut आटा=Flour मसाला=Spice लड्डू=Laddoo जलेबी=Jalebi'],
+    ['शरीर · Body', 'पेट=Stomach पीठ=Back गला=Throat कंधा=Shoulder घुटना=Knee होंठ=Lips गाल=Cheek माथा=Forehead नाखून=Nail जीभ=Tongue दिल=Heart हड्डी=Bone कमर=Waist एड़ी=Heel पलक=Eyelid'],
+    ['प्रकृति · Nature', 'पत्थर=Stone मिट्टी=Soil रेत=Sand झील=Lake झरना=Waterfall घास=Grass बीज=Seed जड़=Root डाली=Branch कली=Bud तूफ़ान=Storm बिजली=Lightning ओस=Dew कोहरा=Fog सुबह=Morning शाम=Evening रात=Night दिन=Day धूप=Sunshine छाया=Shade लहर=Wave टापू=Island गुफा=Cave'],
+    ['घर · Home', 'कमरा=Room रसोई=Kitchen छत=Roof दीवार=Wall पंखा=Fan शीशा=Mirror कंघी=Comb साबुन=Soap तौलिया=Towel बाल्टी=Bucket कटोरी=Bowl चम्मच=Spoon चाकू=Knife तकिया=Pillow चादर=Bedsheet कंबल=Blanket ताला=Lock सीढ़ी=Stairs अलमारी=Cupboard झाड़ू=Broom बर्तन=Utensil'],
+    ['लोग · People', 'माता=Mother दादा=Grandfather नानी=Grandmother चाचा=Uncle चाची=Aunt मामा=Uncle मौसी=Aunt बेटा=Son बेटी=Daughter पड़ोसी=Neighbour सिपाही=Soldier दर्ज़ी=Tailor नाई=Barber कुम्हार=Potter माली=Gardener धोबी=Washerman रसोइया=Cook लड़का=Boy लड़की=Girl आदमी=Man औरत=Woman'],
+    ['जगह और सवारी · Places & travel', 'बस=Bus सड़क=Road पुल=Bridge नगर=Town देश=Country दुकान=Shop बगीचा=Garden अस्पताल=Hospital डाकघर=Post_office खेत=Field किला=Fort महल=Palace चिड़ियाघर=Zoo पहिया=Wheel टिकट=Ticket रास्ता=Path'],
+    ['रंग · Colours', 'भूरा=Brown नारंगी=Orange_(colour) बैंगनी=Purple सुनहरा=Golden चाँदी=Silver आसमानी=Sky_blue'],
+    ['गिनती · Numbers', 'ग्यारह=Eleven बारह=Twelve बीस=Twenty पचास=Fifty हज़ार=Thousand शून्य=Zero'],
+    ['स्कूल · School', 'बस्ता=School_bag कॉपी=Notebook पेंसिल=Pencil रबड़=Eraser स्याही=Ink कक्षा=Classroom छात्र=Student घंटी=Bell पाठ=Lesson अक्षर=Letter शब्द=Word खेल=Game मैदान=Playground चित्र=Picture कहानी=Story कविता=Poem नक्शा=Map पन्ना=Page'],
+    ['कपड़े · Clothes', 'कमीज़=Shirt पतलून=Trousers साड़ी=Saree कुर्ता=Kurta मोज़ा=Sock चप्पल=Slipper दस्ताना=Glove जेब=Pocket बटन=Button स्वेटर=Sweater रुमाल=Handkerchief चश्मा=Glasses अँगूठी=Ring माला=Garland'],
+    ['काम · Actions', 'पढ़ना=Read लिखना=Write खेलना=Play दौड़ना=Run हँसना=Laugh रोना=Cry नाचना=Dance कूदना=Jump तैरना=Swim चलना=Walk बोलना=Speak सुनना=Listen देखना=See पीना=Drink उड़ना=Fly सोचना=Think'],
+    ['भावनाएँ · Feelings', 'खुश=Happy दुखी=Sad गुस्सा=Angry डर=Fear प्यार=Love हँसी=Laughter खुशी=Joy मज़ा=Fun'],
+    ['विशेषण · Describing words', 'बड़ा=Big छोटा=Small लंबा=Tall मोटा=Fat पतला=Thin गरम=Hot ठंडा=Cold नया=New पुराना=Old अच्छा=Good मीठा=Sweet खट्टा=Sour तेज़=Fast धीमा=Slow सुंदर=Beautiful'],
+  ];
+  const LANES = 7;
+  const LETTER_BOX = 0.7;   // letter box size, as a share of the lane width
+  const WORD_H = 0.64;      // word bar height, as a share of the lane width
+  const WORDS = [];
+  for (const [cat, list] of WORD_DATA) {
+    for (const pair of list.split(' ')) {
+      const [hi, enRaw] = pair.split('=');
+      if (!hi || !enRaw || WORDS.some(w => w.hi === hi)) continue;   // skip blanks and repeats
+      const parts = aksharas(hi);
+      if (parts.length >= 2 && parts.length <= LANES) WORDS.push({ hi, en: enRaw.replace(/_/g, ' '), cat, parts });
+    }
+  }
+  const CATEGORIES = [...new Set(WORD_DATA.map(d => d[0]))];
+
+  // =====================================================================
+  // Modes and levels
+  // =====================================================================
+  // Every mode uses the same small keypad of KEYS keys. The game never drops more than the
+  // keypad can cover, so it never gets a sudden wall of keys.
+  const MODES = {
+    yatra: { name: 'यात्रा', glyph: 'अ क शब्द', hint: 'स्वर, व्यंजन and words, all mixed' },
+    varn: { name: 'वर्ण', glyph: 'अ क', hint: 'Letters only: स्वर and व्यंजन' },
+    matra: { name: 'मात्रा', glyph: 'का कि', hint: 'Syllables: spot का कि की कु' },
+  };
+  const MAX_LIVES = 5;
+  const HITS_PER_LEVEL = 12;   // letters and finished words both count
+  const KEYS = 8;              // 2 rows of 4
+
+  // ---------- Storage (everything in try/catch: it can be unavailable) ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  let mode = store.get('ab2-mode', 'yatra');
+  if (!MODES[mode]) mode = 'yatra';
+
+  // =====================================================================
+  // Interface language: Hindi by default, English from the button on the main menu
+  // =====================================================================
+  let lang = store.get('ab2-lang', 'hi') === 'en' ? 'en' : 'hi';
+  const TEXT = {
+    hi: {
+      name: 'अक्षर धमाका', subtitle: 'हिंदी अक्षरों का धमाका!', tagline: 'गिरते अक्षरों और शब्दों को उड़ाओ!',
+      play: 'खेलो', best: n => `🏆 सबसे अच्छा <b>${n}</b>`, noBest: 'अभी कोई रिकॉर्ड नहीं',
+      collection: 'मेरा संग्रह', how: 'कैसे खेलें', soundOn: 'आवाज़ चालू', soundOff: 'आवाज़ बंद', back: 'वापस',
+      otherLang: 'English',
+      matraStart: ['मात्रा शूटर', 'क + ि = कि', 'पहले व्यंजन दबाओ, फिर मात्रा · क वर्ग से शुरू'],
+      modeNames: { yatra: 'शब्द शूटर', varn: 'वर्ण शूटर', matra: 'मात्रा शूटर' },
+      unlocked: n => `स्तर ${n} · नया हिस्सा खुला`,
+      newMatras: m => 'नई मात्राएँ ' + m,
+      steps: {
+        yatra: n => [
+          'आसमान से अक्षर और शब्द गिरते हैं, जैसे <b>क</b> और <b>शेर</b>।',
+          'मिलती हुई कुंजी दबाकर उन्हें उड़ाओ। शब्द के लिए उसके हिस्से क्रम से दबाओ: <b>शे</b> फिर <b>र</b>।',
+          `ख़तरे की पट्टी छूने पर एक जान जाती है। तुम्हारे पास ${n} जानें हैं।`,
+          '♥ वाला शब्द पूरा करो तो एक जान वापस मिलती है। जो भी उड़ाओगे, वो तुम्हारे संग्रह में जुड़ जाएगा।',
+        ],
+        varn: n => [
+          'सिर्फ़ स्वर (<b>अ आ इ</b>) और व्यंजन (<b>क ख ग</b>) गिरते हैं, हर डिब्बे में एक अक्षर।',
+          'नीचे की 8 कुंजियों में वही अक्षर दबाओ। अक्षर गिरने के साथ कुंजियाँ बदलती रहती हैं।',
+          `ख़तरे की पट्टी छूने पर एक जान जाती है। तुम्हारे पास ${n} जानें हैं। स्तर बढ़ने पर अक्षर तेज़ गिरते हैं।`,
+          'हर नया अक्षर तुम्हारे संग्रह में जुड़ता है। सभी 11 स्वर और 36 व्यंजन ढूँढो!',
+        ],
+        matra: n => [
+          'आसमान से मात्रा वाले अक्षर गिरते हैं, जैसे <b>का कि की कु</b>।',
+          'पहले व्यंजन दबाओ, जैसे <b>क</b>। ऊपर की मात्रा वाली पंक्ति पीली हो जाएगी।',
+          'अब मात्रा दबाओ: <b>क + ि = कि</b>। तोप चल जाएगी!',
+          `शुरुआत <b>क वर्ग</b> से होती है, और हर स्तर पर अगला हिस्सा खुलता है। ख़तरे की पट्टी छूने पर एक जान जाती है (${n} जानें)।`,
+        ],
+      },
+      hud: ['अंक', 'स्तर', 'कॉम्बो', 'जान'],
+      paused: 'विराम', pauseInfo: (s, l, m) => `अंक ${s} · स्तर ${l} · ${m}`, resume: 'जारी रखो', restart: 'फिर से शुरू', menu: 'मुख्य मेनू',
+      over: 'खेल ख़त्म', newBest: '🎉 नया रिकॉर्ड!', bestN: n => 'सबसे अच्छा ' + n, reached: (l, m) => `स्तर ${l} तक पहुँचे · ${m}`, again: 'फिर खेलो',
+      found: (h, t) => `${h} / ${t} अक्षर और शब्द मिले`, complete: '✓ पूरा', vowels: 'स्वर', consonants: 'व्यंजन',
+      start: ['चलो शुरू करें!', 'स्वर · व्यंजन · शब्द', 'अक्षर और शब्द, सब मिलाकर'],
+      lv3: ['स्तर 3', 'लंबे शब्द', 'अब 3 हिस्सों वाले शब्द भी आएँगे'],
+      lv5: ['स्तर 5', 'मुश्किल शब्द', 'अब ् और ़ वाले शब्द भी आएँगे'],
+      ach: '★ उपलब्धि ★',
+      achSwar: n => `तुमने सभी ${n} स्वर खोज लिए`, achVyanjan: n => `तुमने सभी ${n} व्यंजन खोज लिए`,
+      achCat: (hi, en) => [hi + ' पूरा!', hi + ' के सारे शब्द मिल गए'], achAll: ['संग्रह पूरा!', 'तुमने सब कुछ खोज लिया'],
+      pops: ['धमाका!', 'वाह!', 'शाबाश!', 'बढ़िया!', 'ज़ोरदार!'], oops: 'उफ़! -5', ouch: 'आउच!',
+      levelUp: n => `स्तर ${n}!`, combo: m => `कॉम्बो x${m}!`, newLetter: 'नया!', newWord: 'नया शब्द! +', bonus: '♥ बोनस +50',
+      mute: 'आवाज़ बंद करो', unmute: 'आवाज़ चालू करो', pause: 'रोको', keys: 'अक्षर कुंजियाँ',
+    },
+    en: {
+      name: 'Akshar Dhamaka', subtitle: 'Hindi Letter Blast!', tagline: 'Blast falling Hindi letters and words!',
+      play: 'PLAY', best: n => `🏆 Best <b>${n}</b>`, noBest: 'No best score yet',
+      collection: 'My collection', how: 'How to play', soundOn: 'Sound on', soundOff: 'Sound off', back: 'Back',
+      otherLang: 'हिंदी',
+      matraStart: ['MATRA SHOOTER', 'क + ि = कि', 'Tap a consonant, then a matra · starts with क वर्ग'],
+      modeNames: { yatra: 'Shabd Shooter', varn: 'Varn Shooter', matra: 'Matra Shooter' },
+      unlocked: n => `LEVEL ${n} · NEW ROW UNLOCKED`,
+      newMatras: m => 'new matras ' + m,
+      steps: {
+        yatra: n => [
+          'Letters and words fall from the sky, like <b>क</b> and <b>शेर</b>.',
+          'Tap the matching key to blast them. For a word, tap its parts in order: <b>शे</b> then <b>र</b>.',
+          `Anything that touches the danger tape costs a heart. You have ${n}.`,
+          'Finish a word with a ♥ to get a heart back. Everything you blast goes in your collection.',
+        ],
+        varn: n => [
+          'Only स्वर (<b>अ आ इ</b>) and व्यंजन (<b>क ख ग</b>) fall, one letter in each box.',
+          'Tap the same letter on the 8 keys below. The keys change as letters fall.',
+          `Anything that touches the danger tape costs a heart. You have ${n}. Letters fall faster as levels go up.`,
+          'Every new letter goes in your collection. Find all 11 स्वर and 36 व्यंजन!',
+        ],
+        matra: n => [
+          'Letters with matras fall from the sky, like <b>का कि की कु</b>.',
+          'Tap the व्यंजन first, like <b>क</b>. The matra line on top turns yellow.',
+          'Now tap the matra: <b>क + ि = कि</b>. The cannon fires!',
+          `You start with <b>क वर्ग</b>, and each level unlocks the next section. Anything that touches the danger tape costs a heart (you have ${n}).`,
+        ],
+      },
+      hud: ['Score', 'Level', 'Combo', 'Lives'],
+      paused: 'Paused', pauseInfo: (s, l, m) => `Score ${s} · Level ${l} · ${m}`, resume: 'RESUME', restart: 'Restart', menu: 'Main menu',
+      over: 'Game Over', newBest: '🎉 New best score!', bestN: n => 'Best ' + n, reached: (l, m) => `Reached level ${l} · ${m}`, again: 'PLAY AGAIN',
+      found: (h, t) => `${h} / ${t} letters and words found`, complete: '✓ complete', vowels: 'स्वर · Vowels', consonants: 'व्यंजन · Consonants',
+      start: ["LET'S GO!", 'स्वर · व्यंजन · शब्द', 'Letters and words, all mixed'],
+      lv3: ['LEVEL 3', 'Longer words', 'Words with 3 syllables join in'],
+      lv5: ['LEVEL 5', 'Tricky words', 'Words with ् and ़ join in'],
+      ach: '★ ACHIEVEMENT ★',
+      achSwar: n => `You found all ${n} vowels`, achVyanjan: n => `You found all ${n} consonants`,
+      achCat: (hi, en) => [en + ' complete!', 'Every word in ' + en + ' collected'], achAll: ['Collection complete!', 'You found everything'],
+      pops: ['POP!', 'ZAP!', 'BOOM!', 'NICE!', 'YES!'], oops: 'OOPS! -5', ouch: 'OUCH!',
+      levelUp: n => `LEVEL ${n}!`, combo: m => `COMBO x${m}!`, newLetter: 'NEW!', newWord: 'NEW WORD! +', bonus: '♥ BONUS +50',
+      mute: 'Mute sound', unmute: 'Turn sound on', pause: 'Pause', keys: 'Letter keys',
+    },
+  };
+  const T = () => TEXT[lang];
+  const catName = cat => cat.split(' · ')[lang === 'hi' ? 0 : 1] || cat;
+  const isHi = () => lang === 'hi';
+  const modeName = k => T().modeNames[k];
+  let muted = store.get('ab2-muted', false);
+  const dict = store.get('ab2-dict', {}) || {};            // letter or word -> times destroyed
+  const earned = new Set(store.get('ab2-ach', []) || []); // achievement ids
+  let best = 0;
+  const loadBest = () => { best = store.get('ab2-best-' + mode, 0) || 0; };
+
+  // =====================================================================
+  // DOM
+  // =====================================================================
+  const $ = id => document.getElementById(id);
+  const canvas = $('game'), ctx = canvas.getContext('2d');
+  const overlay = $('overlay'), keysEl = $('keys');
+  const elScore = $('score'), elLevel = $('level'), elCombo = $('combo'), elLives = $('lives');
+  const pauseBtn = $('pauseBtn'), muteBtn = $('muteBtn');
+  const css = getComputedStyle(document.documentElement);
+  const C = {};
+  ['ink', 'ink-2', 'sky-1', 'sky-2', 'pink', 'yellow', 'mint', 'blue', 'purple', 'orange', 'red'].forEach(k => C[k] = css.getPropertyValue('--' + k).trim());
+  const CANDY = [C.pink, C.orange, C.yellow, C.mint, C.blue, C.purple];
+  const DISPLAY_FONT = '"Lilita One", "Arial Black", Impact, sans-serif';
+  const DEVA_FONT = '"Baloo 2", "Nirmala UI", "Mangal", "Noto Sans Devanagari", sans-serif';
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('800 32px "Baloo 2"', 'कअ').catch(() => {});
+    document.fonts.load('32px "Lilita One"', 'POP').catch(() => {});
+  }
+
+  // =====================================================================
+  // Game state
+  // =====================================================================
+  let state = 'title';   // title | playing | paused | over
+  let letters = [], words = [], beams = [], particles = [], floaters = [];
+  let score = 0, level = 1, hits = 0, combo = 0, lives = MAX_LIVES, spawnTimer = 0;
+  let shake = 0, hurt = 0, gunAngle = -Math.PI / 2, recoil = 0, gunFlash = 0, happy = 0;
+  let activeWord = null;   // the word the cannon is locked onto
+  let clock = 0;           // seconds, for wobbles and twinkles
+
+  // Bigger pace = slower. Words take several taps, so they slow things down a little.
+  const pace = () => (mode === 'yatra' ? 1.6 : mode === 'matra' ? 1.7 : 1.25);
+  // यात्रा: share of each wave that is a word, growing with levels.
+  const wordChance = () => (mode === 'yatra' ? Math.min(0.55, 0.3 + (level - 1) * 0.04) : 0);
+
+  // Simple = no half-letters (्), nukta dots (़, ड़ ज़ ...) or nasal marks (ँ ं).
+  const isSimple = e => !/[़्ऀ-ंक़-य़]/.test(e.hi);
+  // Words start easy and open up: levels 1-2 simple 2-syllable words, levels 3-4 simple words
+  // up to 3 syllables, levels 5-6 any word up to 3 syllables, then everything.
+  function wordAllowed(e) {
+    if (level <= 2) return isSimple(e) && e.parts.length === 2;
+    if (level <= 4) return isSimple(e) && e.parts.length <= 3;
+    if (level <= 6) return e.parts.length <= 3;
+    return true;
+  }
+  // The single letters each mode drops.
+  function letterSet() {
+    if (mode === 'matra') {
+      // Half the time from the newest section, so the letters just unlocked get practice.
+      const open = MATRA_SECTIONS.slice(0, sectionsOpen());
+      const pool = open.length > 1 && Math.random() < 0.5 ? open[open.length - 1].letters : open.flatMap(s => s.letters);
+      return pool.filter(v => !NO_MATRA.includes(v)).flatMap(v => matrasForLevel().map(m => v + m));
+    }
+    return HI_ALL;
+  }
+  const sectionsOpen = () => Math.min(MATRA_SECTIONS.length, level);
+  // मात्रा mode opens up the matras slowly: ा ि ी first, then ु ू े, then all of them.
+  function matrasForLevel() {
+    if (level <= 2) return ['', 'ा', 'ि', 'ी'];
+    if (level <= 4) return ['', 'ा', 'ि', 'ी', 'ु', 'ू', 'े'];
+    return MATRAS;
+  }
+
+  // =====================================================================
+  // Keypad: KEYS keys that keep their places; a key changes only when it has to
+  // =====================================================================
+  const slots = new Array(KEYS).fill(null);
+  let slotEls = [], keyEls = {}, keyset = [];
+
+  function makeKey(onTap) {
+    const b = document.createElement('button');
+    b.className = 'key';
+    b.addEventListener('pointerdown', e => { e.preventDefault(); onTap(); });
+    return b;
+  }
+  function buildKeys() {
+    keysEl.innerHTML = '';
+    keysEl.className = 'keys';
+    slotEls = [];
+    picked = null;
+    if (mode === 'matra') { buildMatraKeys(); return; }
+    for (let i = 0; i < KEYS; i++) {
+      slots[i] = null;
+      const b = makeKey(() => { if (slots[i]) pressKey(slots[i]); });
+      keysEl.appendChild(b);
+      slotEls.push(b);
+    }
+    refreshKeys();
+  }
+  // मात्रा mode keypad: the whole व्यंजन set plus the matra keys. A tap on a व्यंजन picks it,
+  // and the matra key then builds the syllable (क + ि = कि) and fires.
+  let picked = null, matEls = {};
+  function buildMatraKeys() {
+    keysEl.className = 'keys matra';
+    const cons = document.createElement('div'), mats = document.createElement('div');
+    cons.className = 'cons';
+    mats.className = 'kgrid mats';
+    keyEls = {}; matEls = {};
+    // One keypad row per entry in MATRA_ROWS; a section never splits across rows.
+    for (const rowSections of MATRA_ROWS) {
+      const row = document.createElement('div');
+      row.className = 'krow';
+      for (const si of rowSections) {
+        const sec = document.createElement('div');
+        sec.className = 'ksec';
+        sec.style.flexGrow = MATRA_SECTIONS[si].letters.length;
+        sec.title = MATRA_SECTIONS[si].hi;
+        for (const v of MATRA_SECTIONS[si].letters) {
+          const b = makeKey(() => pickConsonant(v));
+          b.textContent = v;
+          b.setAttribute('aria-label', v);
+          b.dataset.sec = si;
+          sec.appendChild(b);
+          keyEls[v] = b;
+        }
+        row.appendChild(sec);
+      }
+      cons.appendChild(row);
+    }
+    for (const m of MATRAS) {
+      const b = makeKey(() => pressMatra(m));
+      mats.appendChild(b);
+      matEls[m] = b;
+    }
+    keysEl.append(mats, cons);
+    keyset = [...MATRA_LETTERS, ...MATRAS.slice(1)];
+    renderMatraKeys();
+  }
+  // Matra keys show what they would make with the picked व्यंजन: का कि की ...
+  function renderMatraKeys() {
+    for (const m of MATRAS) {
+      const b = matEls[m];
+      const label = picked ? picked + m : '◌' + m;
+      b.textContent = label;
+      b.setAttribute('aria-label', label);
+      b.classList.toggle('idle', !picked);
+      b.classList.toggle('long', !!picked && picked.length > 1);   // क्ष त्र ज्ञ
+    }
+    const open = sectionsOpen();
+    for (const v of MATRA_LETTERS) {
+      const b = keyEls[v];
+      const locked = +b.dataset.sec >= open;
+      if (b.classList.contains('locked') && !locked) popIn(b);   // just unlocked
+      b.classList.toggle('locked', locked);
+      b.classList.toggle('picked', v === picked);
+    }
+  }
+  function pickConsonant(v) {
+    if (state !== 'playing') return;
+    if (keyEls[v].classList.contains('locked')) { flashEl(keyEls[v], 'miss'); return; }   // section not open yet
+    picked = picked === v ? null : v;
+    renderMatraKeys();
+    tone(520, 620, 0.04, 'square', 0.02);
+  }
+  function pressMatra(m) {
+    if (state !== 'playing') return;
+    if (!picked) { flashEl(matEls[m], 'miss'); return; }   // pick a व्यंजन first
+    const ak = picked + m;
+    picked = null;
+    renderMatraKeys();
+    pressKey(ak);
+  }
+  function flashKey(ak, cls) {
+    if (mode === 'matra') {
+      const base = baseOf(ak);
+      flashEl(keyEls[base], cls);
+      flashEl(matEls[ak.slice(base.length)], cls);
+      return;
+    }
+    flashEl(keyEls[ak], cls);
+  }
+  function flashEl(b, cls) {
+    if (!b) return;
+    b.classList.remove('hit', 'miss', 'pressed');
+    void b.offsetWidth;
+    b.classList.add(cls, 'pressed');
+    clearTimeout(b._t);
+    b._t = setTimeout(() => b.classList.remove('hit', 'miss', 'pressed'), 200);
+  }
+  function popIn(b) {
+    b.classList.remove('new');
+    void b.offsetWidth;
+    b.classList.add('new');
+  }
+
+  // What the keypad must show now: the rest of the locked word, then what every other
+  // falling thing needs next (lowest first).
+  function requiredAksharas() {
+    const req = [];
+    if (activeWord) for (let i = activeWord.progress; i < activeWord.parts.length; i++) req.push(activeWord.parts[i]);
+    const others = [
+      ...words.filter(w => w !== activeWord).map(w => ({ y: w.y, ak: w.parts[w.progress] })),
+      ...letters.map(l => ({ y: l.y, ak: l.ch })),
+    ].sort((a, b) => b.y - a.y);
+    for (const o of others) req.push(o.ak);
+    return [...new Set(req)];
+  }
+  // Everything that could ever be needed for what is on screen: all remaining syllables of
+  // every word plus every letter. New things only fall while this fits on the keypad.
+  function worstCase(extra) {
+    const s = new Set(extra || []);
+    for (const w of words) for (let i = w.progress; i < w.parts.length; i++) s.add(w.parts[i]);
+    for (const l of letters) s.add(l.ch);
+    return s.size;
+  }
+
+  function refreshKeys() {
+    if (mode === 'matra' || !slotEls.length) return;   // the मात्रा keypad never changes
+    const req = requiredAksharas().slice(0, KEYS);
+    const changed = new Set();
+    const replaceable = slots.map((s, i) => i)
+      .filter(i => !slots[i] || !req.includes(slots[i]))
+      .sort((a, b) => (slots[a] ? 1 : 0) - (slots[b] ? 1 : 0) || Math.random() - 0.5);
+    for (const ak of req) {
+      if (slots.includes(ak) || !replaceable.length) continue;
+      const i = replaceable.shift();
+      slots[i] = ak;
+      changed.add(i);
+    }
+    for (let i = 0; i < KEYS; i++) {
+      if (slots[i]) continue;
+      slots[i] = decoy();
+      changed.add(i);
+    }
+    keyEls = {};
+    keyset = [];
+    slots.forEach((ak, i) => {
+      const b = slotEls[i];
+      if (changed.has(i)) {
+        b.textContent = ak;
+        b.setAttribute('aria-label', ak);
+        b.classList.toggle('long', ak.length > 2);
+        popIn(b);
+      }
+      keyEls[ak] = b;
+      keyset.push(ak);
+    });
+  }
+
+  // A spare key that looks like a real answer: in मात्रा, another matra of a falling
+  // consonant (कि next to की); otherwise a letter or an easy syllable for this level.
+  const baseOf = s => (MATRAS.slice(1).some(m => s.endsWith(m)) ? s.slice(0, -1) : s);
+  function decoy() {
+    const free = c => c && !slots.includes(c);
+    for (let t = 0; t < 30; t++) {
+      let c;
+      if (mode === 'matra' && letters.length && Math.random() < 0.7) {
+        const base = baseOf(letters[(Math.random() * letters.length) | 0].ch);
+        if (VYANJAN.includes(base)) c = base + MATRAS[(Math.random() * MATRAS.length) | 0];
+      } else if (mode === 'yatra' && Math.random() < 0.5) {
+        const list = WORDS.filter(wordAllowed);
+        const w = list[(Math.random() * list.length) | 0];
+        if (w) c = w.parts[(Math.random() * w.parts.length) | 0];
+      } else {
+        const set = letterSet();
+        c = set[(Math.random() * set.length) | 0];
+      }
+      if (free(c)) return c;
+    }
+    return HI_ALL.find(c => !slots.includes(c));
+  }
+
+  // =====================================================================
+  // Sound (synthesised, no files)
+  // =====================================================================
+  let actx = null;
+  function audio() {
+    if (muted) return null;
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(f1, f2, dur, type, vol) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, freq, vol) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime;
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 0.8;
+    const g = a.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f).connect(g).connect(a.destination);
+    src.start(t);
+  }
+  const sfx = {
+    zap: () => tone(1200, 300, 0.12, 'square', 0.035),
+    pop: () => { noise(0.12, 2200, 0.35); tone(900, 1500, 0.06, 'sine', 0.06); },
+    miss: () => tone(220, 120, 0.18, 'sawtooth', 0.03),
+    hurt: () => { tone(400, 80, 0.4, 'triangle', 0.14); noise(0.3, 400, 0.25); },
+    level: () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, f, 0.1, 'square', 0.035), i * 80)); },
+    chime: () => { tone(880, 880, 0.1, 'triangle', 0.08); setTimeout(() => tone(1320, 1320, 0.2, 'triangle', 0.08), 110); },
+  };
+
+  // Background music: an original 8-bar loop (C Am F G), synthesised like the sound effects.
+  // It plays only during a game, speeds up a little with the level, and follows the sound button.
+  const music = (() => {
+    const _ = null;
+    const LEAD = [
+      72, 76, 79, 76, 81, 79, 76, 74,   72, _, 76, 72, 69, 72, 76, _,
+      77, 76, 74, 72, 74, 76, 77, 79,   79, _, 74, _, 71, 74, 79, 77,
+      72, 76, 79, 76, 81, 79, 76, 74,   72, _, 76, 72, 69, 72, 76, _,
+      77, 76, 74, 72, 74, 76, 77, 79,   74, 76, 79, _, 84, _, _, _,
+    ];
+    const ROOTS = [48, 45, 41, 43];
+    const BASS = [0, _, 12, _, 0, _, 12, 7];
+    const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+    let timer = null, step = 0, nextTime = 0, bus = null, hatBuf = null;
+
+    function note(a, t, midi, dur, type, vol) {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(mtof(midi), t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(bus);
+      o.start(t); o.stop(t + dur + 0.02);
+    }
+    function kick(a, t) {
+      const o = a.createOscillator(), g = a.createGain();
+      o.frequency.setValueAtTime(150, t);
+      o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      g.gain.setValueAtTime(0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      o.connect(g).connect(bus);
+      o.start(t); o.stop(t + 0.16);
+    }
+    function hiss(a, t, dur, freq, vol) {
+      if (!hatBuf) {
+        hatBuf = a.createBuffer(1, Math.floor(a.sampleRate * 0.2), a.sampleRate);
+        const d = hatBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const src = a.createBufferSource(); src.buffer = hatBuf;
+      const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = freq;
+      const g = a.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f).connect(g).connect(bus);
+      src.start(t); src.stop(t + dur + 0.02);
+    }
+    function play(a, s, t, len) {
+      const bar = Math.floor(s / 8) % 4, beat = s % 8;
+      if (LEAD[s] !== null) note(a, t, LEAD[s], len * 0.85, 'square', 0.022);
+      if (BASS[beat] !== null) note(a, t, ROOTS[bar] + BASS[beat], len * 0.9, 'triangle', 0.075);
+      if (beat === 0 || beat === 4) kick(a, t);
+      if (beat === 2 || beat === 6) hiss(a, t, 0.09, 1500, 0.045);   // clap
+      if (beat % 2 === 1) hiss(a, t, 0.035, 7000, 0.025);            // hi-hat
+    }
+    function schedule() {
+      const a = actx;
+      if (!a) return;
+      const len = 60 / (112 + Math.min(16, (level - 1) * 2)) / 2;   // one 8th note
+      if (nextTime < a.currentTime) nextTime = a.currentTime + 0.05;
+      while (nextTime < a.currentTime + 0.15) {
+        play(a, step, nextTime, len);
+        nextTime += len;
+        step = (step + 1) % LEAD.length;
+      }
+    }
+    function start() {
+      if (timer) return;
+      const a = audio();
+      if (!a) return;
+      if (!bus) { bus = a.createGain(); bus.connect(a.destination); }
+      const t = a.currentTime;
+      bus.gain.cancelScheduledValues(t);
+      bus.gain.setValueAtTime(0.0001, t);
+      bus.gain.linearRampToValueAtTime(1, t + 0.4);
+      nextTime = t + 0.05;
+      schedule();
+      timer = setInterval(schedule, 25);
+    }
+    function stop() {
+      if (!timer) return;
+      clearInterval(timer);
+      timer = null;
+      if (bus && actx) {
+        const t = actx.currentTime;
+        bus.gain.cancelScheduledValues(t);
+        bus.gain.setValueAtTime(bus.gain.value, t);
+        bus.gain.linearRampToValueAtTime(0.0001, t + 0.25);
+      }
+    }
+    return {
+      reset: () => { step = 0; },
+      sync: () => (state === 'playing' && !muted ? start() : stop()),
+    };
+  })();
+  const ICON_SOUND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+  const ICON_MUTED = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+  function renderMute() {
+    muteBtn.innerHTML = muted ? ICON_MUTED : ICON_SOUND;
+    muteBtn.setAttribute('aria-label', muted ? T().unmute : T().mute);
+    music.sync();
+  }
+  muteBtn.addEventListener('click', () => { muted = !muted; store.set('ab2-muted', muted); renderMute(); });
+  renderMute();
+
+  // =====================================================================
+  // Playfield geometry
+  // =====================================================================
+  let W = 0, H = 0, clouds = [], sparkles = [];
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!clouds.length || Math.abs(clouds.w - W) > 40) {
+      clouds = [];
+      for (let i = 0; i < 6; i++) clouds.push({ x: Math.random() * W, y: 30 + Math.random() * H * 0.7, s: 0.6 + Math.random() * 0.8, v: 6 + Math.random() * 10 });
+      clouds.w = W;
+      sparkles = [];
+      for (let i = 0; i < 26; i++) sparkles.push({ x: Math.random() * W, y: Math.random() * H * 0.85, p: Math.random() * 6, s: 2 + Math.random() * 3 });
+    }
+  }
+  new ResizeObserver(resize).observe(canvas);
+
+  const GUN_ZONE = 72;     // space below the danger tape for the cannon
+  const BARREL = 44;
+  // Lanes across the field; floor is the danger tape.
+  function grid() {
+    const cell = Math.max(10, (W - 16) / LANES);   // scales with the frame, so it looks the same on every screen
+    return { cell, left: (W - cell * LANES) / 2, floor: H - GUN_ZONE };
+  }
+  const laneX = (g, c) => g.left + (c + 0.5) * g.cell;
+  const gunPivot = () => ({ x: W / 2, y: H - 26 });
+  function dangerLevel() {
+    const g = grid();
+    let low = 0;
+    for (const l of letters) low = Math.max(low, l.y);
+    for (const w of words) low = Math.max(low, w.y);
+    return g.floor > 0 ? Math.min(1, low / g.floor) : 0;
+  }
+
+  // Difficulty grows slowly and then stops growing (from level 11), so it never jumps.
+  const ramp = () => Math.min(10, level - 1);
+  // Time between waves; things come 25% less often when you are down to 2 hearts or fewer.
+  const spawnInterval = () => (2100 - ramp() * 80) * pace() * (lives <= 2 ? 1.25 : 1);
+  // +3% fall speed per level, at most +30%.
+  const fallSpeed = () => H * 0.11 * (1 + ramp() * 0.03) / Math.sqrt(pace());
+  // Most things on screen at once: 3 at the start, +1 every 3 levels, at most 6.
+  const maxOnScreen = () => Math.min(6, 3 + Math.floor((level - 1) / 3));
+  // Every new thing starts at least this far (in lane widths) above the highest one.
+  const ITEM_GAP = 1.5;
+  // True if a new thing may start at height y: under the on-screen limit, and spaced out.
+  function roomFor(y, g) {
+    if (letters.length + words.length >= maxOnScreen()) return false;
+    return ![...letters, ...words].some(o => o.y - y < g.cell * ITEM_GAP);
+  }
+  const randColor = () => CANDY[(Math.random() * CANDY.length) | 0];
+  const randSpeed = () => 0.88 + Math.random() * 0.24;
+  // Single letters fall faster than words, which need several taps.
+  const LETTER_SPEED = 1.35;
+
+  // =====================================================================
+  // Spawning: waves of 1-3 things at once, mixed and staggered
+  // =====================================================================
+  function spawnWave() {
+    const g = grid();
+    // Waves start as single drops; pairs get likelier slowly; triples only from level 6.
+    const n = 1 + (Math.random() < Math.min(0.5, 0.15 + (level - 1) * 0.05) ? 1 : 0)
+                + (level >= 6 && Math.random() < 0.15 ? 1 : 0);
+    let stagger = 0, wordDone = false;
+    for (let i = 0; i < n; i++) {
+      // At most one word per wave, so words never arrive in a crowd.
+      if (!wordDone && Math.random() < wordChance()) { wordDone = spawnWord(stagger); if (!wordDone) spawnLetter(stagger); }
+      else spawnLetter(stagger);
+      stagger += g.cell * (ITEM_GAP + 0.2 + Math.random() * 0.8);
+    }
+  }
+
+  // Words fall slower than letters, and longer words slower still, because every syllable
+  // is another tap: 2 syllables = 0.9, 3 = 0.75, 4 = 0.64, 5 = 0.56 of letter speed.
+  const wordSpeed = len => 0.9 / (1 + 0.2 * (len - 2));
+  // How many words may be on screen at once, and how far apart they must start.
+  const maxWords = () => (level < 4 ? 2 : 3);
+  const WORD_GAP = 2.6;   // in lane widths, measured top to top
+  // Chance that a new word carries a heart (finishing it gives a life back).
+  const heartChance = () => (lives <= 2 ? 0.3 : lives < MAX_LIVES ? 0.18 : 0.08);
+
+  // True if nothing near the top already uses lanes col .. col+len-1.
+  function lanesFree(col, len, g) {
+    const near = y => y < g.cell * 2.5;
+    return !letters.some(l => near(l.y) && l.col >= col && l.col < col + len) &&
+           !words.some(w => near(w.y) && col < w.col + w.parts.length && w.col < col + len);
+  }
+
+  function spawnLetter(stagger) {
+    const g = grid();
+    const set = letterSet();
+    // Prefer letters not already falling, and (outside मात्रा) letters not collected yet.
+    const onScreen = new Set([...letters.map(l => l.ch), ...words.map(w => w.parts[w.progress])]);
+    let from = set.filter(ch => !onScreen.has(ch));
+    if (!from.length) return;
+    if (mode !== 'matra') {
+      const unseen = from.filter(ch => !dict[ch]);
+      if (unseen.length && Math.random() < 0.5) from = unseen;
+    }
+    const ch = from[(Math.random() * from.length) | 0];
+    if (mode !== 'matra' && worstCase([ch]) > KEYS) return;   // the keypad could not cover it
+    const y = -g.cell * 0.6 - (stagger || 0);
+    if (!roomFor(y, g)) return;
+    const open = [];
+    // Letters fall faster than words, so keep them out of any column a word is falling in.
+    const underWord = c => words.some(w => c >= w.col && c < w.col + w.parts.length);
+    for (let c = 0; c < LANES; c++) if (lanesFree(c, 1, g) && !underWord(c)) open.push(c);
+    if (!open.length) return;
+    letters.push({ ch, col: open[(Math.random() * open.length) | 0], y, spd: randSpeed() * (mode === 'matra' ? 1 : LETTER_SPEED), color: randColor(), phase: Math.random() * 6, age: 0 });
+    refreshKeys();
+  }
+
+  // Returns true if a word was dropped.
+  function spawnWord(stagger) {
+    const g = grid();
+    const y = -g.cell * 0.6 - (stagger || 0);
+    // Keep words apart: a limit on how many, and a gap below the newest one.
+    if (!roomFor(y, g)) return false;
+    if (words.length >= maxWords()) return false;
+    if (words.some(w => w.y - y < g.cell * WORD_GAP)) return false;
+    const onScreen = new Set(words.map(w => w.hi));
+    let pick = WORDS.filter(e => !onScreen.has(e.hi) && wordAllowed(e) && worstCase(e.parts) <= KEYS);
+    if (!pick.length) return false;
+    // Lean towards words not collected yet, so the collection keeps growing.
+    const unseen = pick.filter(e => !dict[e.hi]);
+    if (unseen.length && Math.random() < 0.6) pick = unseen;
+    const entry = pick[(Math.random() * pick.length) | 0];
+    const len = entry.parts.length;
+    const open = [];
+    for (let c = 0; c + len <= LANES; c++) if (lanesFree(c, len, g)) open.push(c);
+    if (!open.length) return false;
+    words.push({
+      ...entry, progress: 0, col: open[(Math.random() * open.length) | 0], y,
+      spd: randSpeed() * wordSpeed(len), heart: Math.random() < heartChance(),
+      color: randColor(), phase: Math.random() * 6, age: 0,
+    });
+    refreshKeys();
+    return true;
+  }
+
+  // =====================================================================
+  // Effects
+  // =====================================================================
+  // Confetti: little spinning paper strips in every candy colour.
+  function confetti(x, y, count, speed) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2, v = speed * (0.35 + Math.random() * 0.65);
+      particles.push({
+        x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - speed * 0.3,
+        rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14,
+        w: 4 + Math.random() * 5, h: 2.5 + Math.random() * 3,
+        life: 0.7 + Math.random() * 0.6, max: 1.3, color: CANDY[i % CANDY.length],
+      });
+    }
+    particles.push({ ring: true, x, y, r: 8, life: 0.3, max: 0.3, color: '#ffffff' });
+  }
+  // deva: draw with the Hindi font (for text containing Devanagari).
+  function floatText(x, y, text, color, size, deva) {
+    floaters.push({ x, y, text, color, size: size || 20, deva: !!deva, life: deva ? 1.4 : 1, max: deva ? 1.4 : 1 });
+  }
+  // Cheers and labels in the interface language (the Hindi font when the interface is Hindi).
+  function say(x, y, text, color, size) {
+    floaters.push({ x, y, text, color, size: size || 20, deva: isHi(), life: 1, max: 1 });
+  }
+  function fireBeam(tx, ty) {
+    const p = gunPivot();
+    gunAngle = Math.atan2(ty - p.y, tx - p.x);
+    recoil = 1;
+    happy = 0.6;
+    beams.push({ x1: p.x + Math.cos(gunAngle) * BARREL, y1: p.y + Math.sin(gunAngle) * BARREL, x2: tx, y2: ty, life: 0.2, max: 0.2 });
+  }
+  function bump(el) {
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+  function wrongKey(ak) {
+    flashKey(ak, 'miss');
+    combo = 0;
+    score = Math.max(0, score - 5);
+    gunFlash = 0.5;
+    sfx.miss();
+    const p = gunPivot();
+    say(p.x, p.y - 64, T().oops, C.red, 18);
+    updateHud();
+  }
+  function comboCheer(x, y) {
+    if (combo >= 5 && combo % 5 === 0) say(x, y - 40, T().combo(Math.min(5, 1 + combo / 5)), C.purple, 26);
+  }
+
+  // =====================================================================
+  // Shooting
+  // =====================================================================
+  // One key press: the locked word's next syllable comes first; otherwise the lowest single
+  // letter with this akshara; otherwise lock onto the lowest word that starts with it.
+  function pressKey(ak) {
+    if (state !== 'playing') return;
+    if (activeWord && activeWord.parts[activeWord.progress] === ak) { shootWordPart(ak); return; }
+    let target = null;
+    for (const l of letters) if (l.ch === ak && (!target || l.y > target.y)) target = l;
+    if (target) { shootLetter(target, ak); return; }
+    if (!activeWord) {
+      let pick = null;
+      for (const w of words) if (w.progress === 0 && w.parts[0] === ak && (!pick || w.y > pick.y)) pick = w;
+      if (pick) { activeWord = pick; shootWordPart(ak); return; }
+    }
+    wrongKey(ak);
+  }
+
+  function shootLetter(target, ak) {
+    flashKey(ak, 'hit');
+    const g = grid();
+    const tx = laneX(g, target.col), ty = target.y;
+    fireBeam(tx, ty);
+    letters.splice(letters.indexOf(target), 1);
+    combo++;
+    const mult = Math.min(5, 1 + Math.floor((combo - 1) / 5));
+    // Shooting a letter while it is still high up is worth more.
+    const pts = Math.round((10 + (level - 1) * 5 + Math.max(0, 1 - ty / g.floor) * 10) * mult);
+    score += pts;
+    confetti(tx, ty, 26, 260);
+    shake = Math.max(shake, 3);
+    say(tx, ty - 6, T().pops[(Math.random() * T().pops.length) | 0], target.color, 22);
+    floatText(tx, ty + 22, '+' + pts, C.ink, 16);
+    comboCheer(tx, ty);
+    sfx.zap(); setTimeout(sfx.pop, 30);
+    recordLetter(ak, tx, ty);
+    countHit();
+    refreshKeys();
+    updateHud();
+    bump(elScore);
+  }
+
+  function shootWordPart(ak) {
+    const w = activeWord;
+    const g = grid();
+    const tx = laneX(g, w.col + w.progress), ty = w.y;
+    fireBeam(tx, ty);
+    w.progress++;
+    confetti(tx, ty, 10, 170);
+    flashKey(ak, 'hit');
+    sfx.zap();
+    score += 5 * level;
+    if (w.progress >= w.parts.length) completeWord(w);
+    else refreshKeys();
+    updateHud();
+  }
+
+  function completeWord(w) {
+    const g = grid();
+    const cx = laneX(g, w.col) + (w.parts.length - 1) * g.cell / 2;
+    words.splice(words.indexOf(w), 1);
+    activeWord = null;
+    combo++;
+    const mult = Math.min(5, 1 + Math.floor((combo - 1) / 3));
+    // Longer words, and words finished while still high up, are worth more.
+    const pts = (w.parts.length * 15 + Math.round(Math.max(0, 1 - w.y / g.floor) * 20)) * mult;
+    score += pts;
+    confetti(cx, w.y, 50, 320);
+    shake = Math.max(shake, 5);
+    setTimeout(sfx.pop, 30);
+    const isNew = record(w.hi);
+    floatText(cx, w.y - 8, w.hi + ' · ' + w.en, w.color, 22, true);
+    say(cx, w.y + 24, (isNew ? T().newWord : '+') + pts, isNew ? C.pink : C.ink, 16);
+    comboCheer(cx, w.y);
+    if (isNew) { sfx.chime(); checkAchievements(); }
+    // Heart words give a life back (or bonus points when the hearts are already full).
+    if (w.heart) {
+      if (lives < MAX_LIVES) {
+        gainLife(cx, w.y - 40);
+      } else {
+        score += 50;
+        say(cx, w.y - 40, T().bonus, C.red, 20);
+      }
+      confetti(cx, w.y, 30, 260);
+    }
+    countHit();
+    refreshKeys();
+    updateHud();
+    bump(elScore);
+  }
+
+  function countHit() {
+    hits++;
+    if (hits % HITS_PER_LEVEL !== 0) return;
+    level++;
+    say(W / 2, H * 0.4, T().levelUp(level), C.orange, 34);
+    confetti(W / 2, H * 0.4, 50, 340);
+    sfx.level();
+    bump(elLevel);
+    // Tell the player when longer or harder words start to appear.
+    if (mode === 'yatra' && level === 3) toast(...T().lv3);
+    if (mode === 'yatra' && level === 5) toast(...T().lv5);
+    // मात्रा शूटर: the next section opens on the keypad (and new matras at levels 3 and 5).
+    if (mode === 'matra' && level <= MATRA_SECTIONS.length) {
+      const sec = MATRA_SECTIONS[level - 1];
+      const newMatras = level === 3 ? 'ु ू े' : level === 5 ? 'ै ो ौ ं' : '';
+      toast(T().unlocked(level), sec.hi, sec.letters.join(' ') + (newMatras ? ' · ' + T().newMatras(newMatras) : ''));
+      renderMatraKeys();
+    }
+  }
+
+  // =====================================================================
+  // Lives
+  // =====================================================================
+  function loseLife(x) {
+    if (state !== 'playing') return;
+    lives = Math.max(0, lives - 1);
+    combo = 0;
+    hurt = 1;
+    shake = 12;
+    gunFlash = 0.8;
+    const g = grid();
+    confetti(x, g.floor, 14, 200);
+    say(x, g.floor - 30, T().ouch, C.red, 24);
+    sfx.hurt();
+    const heart = elLives.children[lives];
+    if (heart) { heart.classList.remove('gone'); void heart.offsetWidth; heart.classList.add('gone'); }
+    if (lives <= 0) gameOver();
+    updateHud();
+  }
+  function gainLife(x, y) {
+    if (lives >= MAX_LIVES) return;
+    lives++;
+    floatText(x, y, '+1 ♥', C.red, 26);
+    sfx.chime();
+    const heart = elLives.children[lives - 1];
+    if (heart) { heart.classList.remove('gone'); void heart.offsetWidth; heart.classList.add('gone'); }
+    updateHud();
+  }
+
+  // =====================================================================
+  // Collection and achievements
+  // =====================================================================
+  function record(key) {
+    const n = dict[key] || 0;
+    dict[key] = n + 1;
+    store.set('ab2-dict', dict);
+    return n === 0;
+  }
+  function recordLetter(ch, x, y) {
+    if (!HI_ALL.includes(ch)) return;   // मात्रा syllables are practice, not collected
+    if (!record(ch)) return;
+    say(x, y + 44, T().newLetter, C.pink, 16);
+    checkAchievements();
+  }
+  const collectTotal = () => HI_ALL.length + WORDS.length;
+  const collected = () => HI_ALL.filter(ch => dict[ch]).length + WORDS.filter(w => dict[w.hi]).length;
+  function checkAchievements() {
+    grant('swar', SWAR.every(ch => dict[ch]), 'सभी स्वर!', T().achSwar(SWAR.length));
+    grant('vyanjan', VYANJAN.every(ch => dict[ch]), 'सभी व्यंजन!', T().achVyanjan(VYANJAN.length));
+    for (const cat of CATEGORIES) {
+      const [hi, en] = cat.split(' · ');
+      grant('cat:' + cat, WORDS.filter(w => w.cat === cat).every(w => dict[w.hi]), ...T().achCat(hi, en));
+    }
+    grant('all', collected() >= collectTotal(), ...T().achAll);
+  }
+  function grant(id, done, title, sub) {
+    if (!done || earned.has(id)) return;
+    earned.add(id);
+    store.set('ab2-ach', [...earned]);
+    toast(T().ach, title, sub, true);
+    sfx.chime();
+  }
+
+  // ---------- Pop-up banner ----------
+  const toastEl = $('toast'), toastQueue = [];
+  let toastBusy = false;
+  function toast(kicker, title, sub, achievement) {
+    toastQueue.push({ kicker, title, sub, achievement });
+    if (!toastBusy) nextToast();
+  }
+  function nextToast() {
+    const t = toastQueue.shift();
+    if (!t) { toastBusy = false; return; }
+    toastBusy = true;
+    $('toastKicker').textContent = t.kicker;
+    $('toastTitle').textContent = t.title;
+    $('toastSub').textContent = t.sub;
+    toastEl.classList.toggle('achievement', !!t.achievement);
+    toastEl.classList.add('show');
+    setTimeout(() => {
+      toastEl.classList.remove('show');
+      setTimeout(nextToast, 420);
+    }, t.achievement ? 3200 : 2400);
+  }
+
+  // =====================================================================
+  // Flow
+  // =====================================================================
+  function startGame() {
+    audio();
+    letters = []; words = []; beams = []; particles = []; floaters = [];
+    score = 0; level = 1; hits = 0; combo = 0; lives = MAX_LIVES;
+    spawnTimer = 400; shake = 0; hurt = 0; gunAngle = -Math.PI / 2;
+    activeWord = null;
+    loadBest();
+    buildKeys();
+    state = 'playing';
+    music.reset();
+    music.sync();
+    overlay.hidden = true;
+    menuEl.hidden = true;
+    if (mode === 'yatra') toast(...T().start);
+    if (mode === 'matra') toast(...T().matraStart);
+    updateHud();
+  }
+  function pauseGame() {
+    if (state !== 'playing') return;
+    state = 'paused';
+    music.sync();
+    showOverlay('paused');
+  }
+  function resumeGame() {
+    if (state !== 'paused') return;
+    state = 'playing';
+    overlay.hidden = true;
+    audio();
+    music.sync();
+  }
+  function gameOver() {
+    state = 'over';
+    music.sync();
+    const isBest = score > best;
+    if (isBest) { best = score; store.set('ab2-best-' + mode, best); }
+    setTimeout(() => showOverlay('over', isBest), 700);
+  }
+  function setMode(m) {
+    if (m === mode || !MODES[m]) return;
+    mode = m;
+    store.set('ab2-mode', mode);
+    loadBest();
+    level = 1;
+    letters = []; words = []; activeWord = null;
+    buildKeys();
+  }
+
+  // ---------- Overlay screens ----------
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
+  // Each letter of a title in its own candy colour, slightly tilted, hopping in turn.
+  function rainbow(text, offset) {
+    return text.split(' ').map((word, wi) => '<span class="w">' + aksharas(word).map((ch, i) => {
+      const n = i + wi * 3 + (offset || 0);
+      return `<span class="c" style="color:${CANDY[n % CANDY.length]};--r:${((n * 37) % 11) - 5}deg;animation-delay:${(n * 0.08).toFixed(2)}s">${esc(ch)}</span>`;
+    }).join('') + '</span>').join('');
+  }
+  // ---------- Main menu (covers the whole frame) ----------
+  const menuEl = $('menu');
+  const ICON = {
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.6 3.8 6 3.8 9.5s-1.2 6.9-3.8 9.5c-2.6-2.6-3.8-6-3.8-9.5S9.4 5.1 12 2.5Z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg>',
+    help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 4"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg>',
+  };
+  // Floating letter boxes behind the menu.
+  function menuDecor() {
+    const spots = [[6, 8], [80, 5], [12, 34], [84, 30], [4, 60], [86, 56], [18, 86], [74, 84], [46, 92]];
+    return '<div class="decor" aria-hidden="true">' + spots.map(([x, y], i) => {
+      const ch = HI_ALL[(i * 7 + 3) % HI_ALL.length];
+      const r = ((i * 13) % 20) - 10;
+      return `<span style="left:${x}%;top:${y}%;background:${CANDY[i % CANDY.length]};--r0:${r}deg;--r1:${-r}deg;animation-delay:${(i * 0.6).toFixed(1)}s">${ch}</span>`;
+    }).join('') + '</div>';
+  }
+  function showMenu(view) {
+    state = 'title';
+    overlay.hidden = true;
+    menuEl.hidden = false;
+    const t = T();
+    let html = menuDecor();
+    if (view === 'how') {
+      // One tab per mode; picking a tab also picks that mode, so PLAY plays what you just read.
+      html += `<div class="page-title">${t.how}</div>
+        <div class="mode-cards" role="group" aria-label="Mode">${Object.keys(MODES).map(k =>
+          `<button class="mode-card name-only" data-mode="${k}" aria-pressed="${k === mode}"><span class="n">${modeName(k)}</span></button>`).join('')}</div>
+        <div class="how">${t.steps[mode](MAX_LIVES).map((s, i) =>
+          `<div class="step"><span class="num">${i + 1}</span><span class="t">${s}</span></div>`).join('')}</div>
+        <div class="spacer"></div>
+        <button class="play-big" data-act="start">${ICON.play}${t.play}</button>
+        <button class="menu-btn" data-act="home">${t.back}</button>`;
+    } else if (view === 'dict') {
+      html += dictionaryHtml() + `<button class="menu-btn" data-act="home">${t.back}</button>`;
+    } else {
+      html += `<button class="lang-btn" data-act="lang" lang="${isHi() ? 'en' : 'hi'}">${ICON.globe}${t.otherLang}</button>
+        <div class="spacer"></div>
+        <div class="logo">${rainbow(t.name)}</div>
+        <p class="tagline">${t.tagline}</p>
+        <div class="mode-cards" role="group" aria-label="Mode">${Object.keys(MODES).map(k =>
+          `<button class="mode-card name-only" data-mode="${k}" aria-pressed="${k === mode}"><span class="n">${modeName(k)}</span></button>`).join('')}</div>
+        <button class="play-big" data-act="start">${ICON.play}${t.play}</button>
+        <button class="play-big collect" data-act="dict">${ICON.book}${t.collection} <span class="num">${collected()}/${collectTotal()}</span></button>
+        <div class="best" data-best>${best ? t.best(best) : t.noBest}</div>
+        <div class="spacer"></div>
+        <div class="menu-row">
+          <button class="menu-btn" data-act="how">${ICON.help}${t.how}</button>
+          <button class="menu-btn" data-act="sound">${muted ? ICON_MUTED : ICON_SOUND}<span>${muted ? t.soundOff : t.soundOn}</span></button>
+        </div>`;
+    }
+    menuEl.innerHTML = html;
+    menuEl.scrollTop = 0;
+    menuEl.querySelectorAll('.mode-card').forEach(b => b.addEventListener('click', () => {
+      setMode(b.dataset.mode);
+      tone(660, 880, 0.05, 'square', 0.025);
+      showMenu(view === 'how' ? 'how' : 'home');
+    }));
+    menuEl.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      if (act === 'start') startGame();
+      else if (act === 'home' || act === 'how' || act === 'dict') showMenu(act);
+      else if (act === 'sound') { muted = !muted; store.set('ab2-muted', muted); renderMute(); showMenu('home'); }
+      else if (act === 'lang') { setLang(isHi() ? 'en' : 'hi'); tone(660, 880, 0.05, 'square', 0.025); }
+    }));
+    const play = menuEl.querySelector('.play-big');
+    if (play && view !== 'dict') play.focus({ preventScroll: true });
+  }
+  function goToMenu() {
+    letters = []; words = []; beams = []; particles = []; floaters = [];
+    activeWord = null;
+    showMenu('home');
+    music.sync();
+  }
+
+  // ---------- In-game screens: pause, game over, collection ----------
+  function showOverlay(kind, isBest) {
+    const t = T();
+    const dictBtn = `<button class="btn-2" data-act="dict">${t.collection}<span class="num">${collected()}/${collectTotal()}</span></button>`;
+    const menuBtn = `<button class="btn-2" data-act="menu">${t.menu}</button>`;
+    let html = '';
+    if (kind === 'paused') {
+      html = `<div class="logo">${rainbow(t.paused, 2)}</div>
+        <div class="small">${t.pauseInfo(score, level, modeName(mode))}</div>
+        <button class="btn" data-act="resume">${t.resume}</button>
+        <div class="btn-row"><button class="btn-2" data-act="start">${t.restart}</button>${menuBtn}</div>`;
+    } else if (kind === 'over') {
+      html = `<div class="logo">${rainbow(t.over, 1)}</div>
+        <div class="big-score">${score}</div>
+        <div class="small">${isBest ? t.newBest : t.bestN(best)} · ${t.reached(level, modeName(mode))}</div>
+        <button class="btn" data-act="start">${t.again}</button>
+        <div class="btn-row">${menuBtn}${dictBtn}</div>`;
+    } else if (kind === 'dict') {
+      html = dictionaryHtml() + `<button class="btn-2" data-act="back">${t.back}</button>`;
+    }
+    overlay.innerHTML = html;
+    overlay.hidden = false;
+    overlay.scrollTop = 0;
+    overlay.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      if (act === 'start') startGame();
+      else if (act === 'resume') resumeGame();
+      else if (act === 'menu') goToMenu();
+      else if (act === 'dict') { overlay.dataset.back = kind; showOverlay('dict'); }
+      else if (act === 'back') showOverlay(overlay.dataset.back || 'over');
+    }));
+    const first = overlay.querySelector('.btn');
+    if (first) first.focus({ preventScroll: true });
+  }
+
+  function dictionaryHtml() {
+    const have = collected(), total = collectTotal();
+    const t = T();
+    const done = (got, of) => got === of ? `<span class="done">${t.complete}</span>` : '';
+    const letterSection = (title, set) => {
+      const got = set.filter(ch => dict[ch]).length;
+      return `<div class="dict-cat">${title} ${got}/${set.length}${done(got, set.length)}</div>
+        <div class="dict-grid">${set.map((ch, i) => `<span class="chip c${i % 6}${dict[ch] ? '' : ' locked'}">${ch}</span>`).join('')}</div>`;
+    };
+    let list = letterSection(t.vowels, SWAR) + letterSection(t.consonants, VYANJAN);
+    for (const cat of CATEGORIES) {
+      const inCat = WORDS.filter(w => w.cat === cat);
+      const got = inCat.filter(w => dict[w.hi]).length;
+      list += `<div class="dict-cat">${catName(cat)} ${got}/${inCat.length}${done(got, inCat.length)}</div>`;
+      for (const w of inCat) {
+        const n = dict[w.hi];
+        list += n
+          ? `<div class="drow"><span class="w">${w.hi}</span><span class="m">${esc(w.en)}</span><span class="n">×${n}</span></div>`
+          : `<div class="drow locked"><span class="w">${w.parts.map(() => '?').join(' ')}</span><span class="m"></span></div>`;
+      }
+    }
+    return `<div class="dict-head">${t.collection}</div>
+      <div class="small">${t.found(have, total)}</div>
+      <div class="dict-bar"><i style="width:${total ? (have * 100 / total).toFixed(1) : 0}%"></i></div>
+      <div class="dict-list">${list}</div>`;
+  }
+
+  // ---------- HUD ----------
+  const HEART = '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 2.9 5 6.4 5c2.2 0 3.6 1.3 4.6 2.8C12 6.3 13.4 5 15.6 5 19.1 5 21 8.6 19.6 11.8 17.5 16.4 12 21 12 21Z"/></svg>';
+  elLives.innerHTML = HEART.repeat(MAX_LIVES);
+  function updateHud() {
+    elScore.textContent = score;
+    elLevel.textContent = level;
+    elCombo.textContent = 'x' + Math.min(5, 1 + Math.floor(Math.max(0, combo - 1) / 5));
+    [...elLives.children].forEach((d, i) => d.classList.toggle('lost', i >= lives));
+    elLives.setAttribute('aria-label', lives + ' ' + T().hud[3]);
+  }
+
+  // =====================================================================
+  // Input
+  // =====================================================================
+  pauseBtn.addEventListener('click', () => (state === 'playing' ? pauseGame() : state === 'paused' ? resumeGame() : null));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    // Devanagari typed with a Hindi (InScript) keyboard: any single character that is on a key.
+    if (state === 'playing' && keyset.includes(k)) {
+      e.preventDefault();
+      if (e.repeat) return;
+      if (mode !== 'matra') pressKey(k);
+      else if (MATRA_LETTERS.includes(k)) pickConsonant(k);
+      else pressMatra(k);
+    } else if (k === 'Escape' || (k === ' ' && state === 'playing')) {
+      e.preventDefault();
+      state === 'playing' ? pauseGame() : resumeGame();
+    } else if ((k === 'Enter' || k === ' ') && state === 'title' && !menuEl.hidden && menuEl.querySelector('.play-big')) {
+      e.preventDefault();
+      startGame();
+    } else if ((k === 'Enter' || k === ' ') && state === 'over' && !overlay.hidden && !overlay.querySelector('.dict-list')) {
+      e.preventDefault();
+      startGame();
+    } else if ((k === 'Enter' || k === ' ') && state === 'paused') {
+      e.preventDefault();
+      resumeGame();
+    }
+  });
+
+  // =====================================================================
+  // Update
+  // =====================================================================
+  function update(dt) {
+    spawnTimer -= dt * 1000;
+    if (spawnTimer <= 0) { spawnWave(); spawnTimer = spawnInterval(); }
+
+    const g = grid(), fall = fallSpeed();
+    for (let i = letters.length - 1; i >= 0; i--) {
+      const l = letters[i];
+      l.y += fall * l.spd * dt;
+      l.age += dt;
+      if (l.y < g.floor) continue;
+      // Fell past the danger tape: it is gone, and so is a heart.
+      letters.splice(i, 1);
+      refreshKeys();
+      loseLife(laneX(g, l.col));
+      if (state !== 'playing') return;
+    }
+    for (let i = words.length - 1; i >= 0; i--) {
+      const w = words[i];
+      w.y += fall * w.spd * dt;
+      w.age += dt;
+      if (w.y < g.floor) continue;
+      words.splice(i, 1);
+      if (activeWord === w) activeWord = null;
+      refreshKeys();
+      loseLife(laneX(g, w.col) + (w.parts.length - 1) * g.cell / 2);
+      if (state !== 'playing') return;
+    }
+  }
+
+  function updateFx(dt) {
+    clock += dt;
+    for (const c of clouds) { c.x += c.v * dt; if (c.x - 80 * c.s > W) c.x = -80 * c.s; }
+    for (let i = beams.length - 1; i >= 0; i--) if ((beams[i].life -= dt) <= 0) beams.splice(i, 1);
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      if (p.ring) { p.r += 260 * dt; continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.97; p.vy = p.vy * 0.97 + 260 * dt;
+      p.rot += p.vr * dt;
+    }
+    for (let i = floaters.length - 1; i >= 0; i--) {
+      const f = floaters[i];
+      f.life -= dt; f.y -= 30 * dt;
+      if (f.life <= 0) floaters.splice(i, 1);
+    }
+    shake = Math.max(0, shake - 40 * dt);
+    hurt = Math.max(0, hurt - 2 * dt);
+    recoil = Math.max(0, recoil - 6 * dt);
+    gunFlash = Math.max(0, gunFlash - dt);
+    happy = Math.max(0, happy - dt);
+  }
+
+  // =====================================================================
+  // Draw
+  // =====================================================================
+  function rgb(hex) { const p = parseInt(hex.slice(1), 16); return [(p >> 16) & 255, (p >> 8) & 255, p & 255]; }
+  function alpha(hex, a) { const [r, g, b] = rgb(hex); return `rgba(${r},${g},${b},${a})`; }
+  // amt < 0 darkens, > 0 lightens
+  function shade(hex, amt) {
+    const [r, g, b] = rgb(hex).map(v => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt));
+    return `rgb(${r},${g},${b})`;
+  }
+  // Draws a glyph centred on its real ink box (Devanagari metrics differ a lot from Latin),
+  // shrinks wide conjuncts like क्ष to fit, and gives it a cartoon outline.
+  function glyph(ch, x, y, size, maxW, outline) {
+    const font = s => `800 ${s}px ${DEVA_FONT}`;
+    ctx.font = font(size);
+    let m = ctx.measureText(ch);
+    if (m.width > maxW) { ctx.font = font(size * maxW / m.width); m = ctx.measureText(ch); }
+    const asc = m.actualBoundingBoxAscent || size * 0.7, desc = m.actualBoundingBoxDescent || 0;
+    const by = y + (asc - desc) / 2;
+    if (outline) {
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(3, size * 0.14);
+      ctx.strokeStyle = outline;
+      ctx.strokeText(ch, x, by);
+    }
+    ctx.fillText(ch, x, by);
+  }
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h);
+  }
+  function cloud(x, y, s) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(x, y, 22 * s, 0, Math.PI * 2);
+    ctx.arc(x + 24 * s, y - 10 * s, 26 * s, 0, Math.PI * 2);
+    ctx.arc(x + 50 * s, y, 20 * s, 0, Math.PI * 2);
+    ctx.arc(x + 26 * s, y + 8 * s, 22 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function sparkle(x, y, s, a) {
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath();
+    ctx.moveTo(x, y - s * 2); ctx.quadraticCurveTo(x, y, x + s * 2, y);
+    ctx.quadraticCurveTo(x, y, x, y + s * 2); ctx.quadraticCurveTo(x, y, x - s * 2, y);
+    ctx.quadraticCurveTo(x, y, x, y - s * 2);
+    ctx.fill();
+  }
+  // A red cartoon heart of width s, centred on x, y (same shape as the HUD hearts).
+  const HEART_PATH = new Path2D('M12 21s-7.5-4.6-9.6-9.2C1 8.6 2.9 5 6.4 5c2.2 0 3.6 1.3 4.6 2.8C12 6.3 13.4 5 15.6 5 19.1 5 21 8.6 19.6 11.8 17.5 16.4 12 21 12 21Z');
+  function drawHeart(x, y, s) {
+    ctx.save();
+    ctx.translate(x - s / 2, y - s / 2);
+    ctx.scale(s / 24, s / 24);
+    ctx.fillStyle = C.red;
+    ctx.fill(HEART_PATH);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = C.ink;
+    ctx.stroke(HEART_PATH);
+    ctx.restore();
+  }
+
+  // A chunky candy box: darker bottom edge, cartoon outline, shine strip. Used for both
+  // single letters and word bars. active = the word the cannon is locked onto (glows).
+  function candyBox(x, y, w, h, color, warn, active) {
+    const rad = Math.min(11, h * 0.26);
+    if (active) {
+      ctx.fillStyle = alpha(C.yellow, 0.55);
+      roundRect(x - 6, y - 5, w + 12, h + 10, rad + 4);
+      ctx.fill();
+    }
+    ctx.fillStyle = shade(color, -0.25);
+    roundRect(x, y + 3, w, h - 1, rad);
+    ctx.fill();
+    ctx.fillStyle = color;
+    roundRect(x, y, w, h - 3, rad);
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = warn ? C.red : C.ink;
+    roundRect(x, y, w, h, rad);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    roundRect(x + 6, y + 3, Math.max(0, w - 12), 4, 2);
+    ctx.fill();
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+    // Sunny sky, drifting clouds and twinkles
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, C['sky-1']);
+    sky.addColorStop(1, C['sky-2']);
+    ctx.fillStyle = sky;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+    for (const c of clouds) cloud(c.x - 25 * c.s, c.y, c.s);
+    for (const s of sparkles) sparkle(s.x, s.y, s.s, 0.25 + 0.55 * Math.max(0, Math.sin(clock * 2 + s.p)));
+
+    const g = grid();
+    // Danger tape: stripes that flash faster as letters close in
+    const danger = state === 'playing' ? Math.max(0, (dangerLevel() - 0.6) / 0.4) : 0;
+    const flash = danger > 0 && Math.sin(clock * (8 + danger * 14)) > 0;
+    const glow = ctx.createLinearGradient(0, g.floor - 50, 0, g.floor);
+    glow.addColorStop(0, alpha(C.red, 0));
+    glow.addColorStop(1, alpha(C.red, 0.12 + (flash ? 0.25 * danger : 0)));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, g.floor - 50, W, 50);
+    const tapeH = 12, ty = g.floor - tapeH / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, ty, W, tapeH); ctx.clip();
+    ctx.fillStyle = flash ? '#fff' : C.yellow;
+    ctx.fillRect(0, ty, W, tapeH);
+    ctx.fillStyle = C.ink;
+    const slide = (clock * 30) % 24;
+    for (let x = -24 + slide; x < W + 24; x += 24) {
+      ctx.beginPath(); ctx.moveTo(x, ty + tapeH); ctx.lineTo(x + 12, ty); ctx.lineTo(x + 20, ty); ctx.lineTo(x + 8, ty + tapeH); ctx.fill();
+    }
+    ctx.restore();
+    ctx.strokeStyle = C.ink;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-2, ty, W + 4, tapeH);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    // Letter boxes: one-syllable candy boxes like the word bars. They pop in, wobble a
+    // little, and blink red near the tape.
+    for (const l of letters) {
+      const s = Math.min(1, 0.4 + l.age * 3);
+      const bw = g.cell * LETTER_BOX, bh = g.cell * LETTER_BOX;
+      const warn = l.y > g.floor * 0.8 && Math.sin(clock * 16) > 0;
+      ctx.save();
+      ctx.translate(laneX(g, l.col), l.y);
+      ctx.rotate(Math.sin(clock * 1.7 + l.phase) * 0.06);
+      ctx.scale(s, s);
+      candyBox(-bw / 2, -bh / 2, bw, bh, l.color, warn, false);
+      ctx.fillStyle = '#fff';
+      glyph(l.ch, 0, -1, l.ch.length > 1 ? bh * 0.5 : bh * 0.62, bw * 0.8, shade(l.color, -0.45));
+      ctx.restore();
+    }
+
+    // Words: a fat candy bar of syllables; shot syllables fade, the locked word glows
+    for (const w of words) {
+      const len = w.parts.length, x0 = g.left + w.col * g.cell, bob = Math.sin(clock * 2 + w.phase) * 2;
+      const wh = g.cell * WORD_H;   // bar height: shorter than a lane is wide
+      const top = w.y - wh / 2 + bob, active = w === activeWord;
+      const warn = w.y > g.floor * 0.8 && Math.sin(clock * 16) > 0;
+      candyBox(x0 + 2, top + 1, len * g.cell - 4, wh - 2, w.color, warn, active);
+      for (let i = 0; i < len; i++) {
+        const cx = laneX(g, w.col + i);
+        if (i > 0) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(cx - g.cell / 2, top + 7); ctx.lineTo(cx - g.cell / 2, top + wh - 7); ctx.stroke();
+        }
+        ctx.globalAlpha = i < w.progress ? 0.25 : 1;
+        ctx.fillStyle = '#fff';
+        glyph(w.parts[i], cx, w.y + bob, w.parts[i].length > 2 ? wh * 0.5 : wh * 0.62, g.cell * 0.8, shade(w.color, -0.45));
+        ctx.globalAlpha = 1;
+      }
+      // Heart word: a beating heart badge on the left end (finish the word for +1 life)
+      if (w.heart) {
+        const bx = x0 + 4, by = top + 2, r = Math.max(9, wh * 0.36);
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = C.ink;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        drawHeart(bx, by + 1, r * 1.45 * (1 + 0.12 * Math.max(0, Math.sin(clock * 7))));
+      }
+    }
+
+    // Zap beams: fat yellow with a pink edge and a white core
+    ctx.lineCap = 'round';
+    for (const b of beams) {
+      const a = b.life / b.max;
+      ctx.strokeStyle = alpha(C.pink, 0.6 * a);
+      ctx.lineWidth = 16 * a + 4;
+      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      ctx.strokeStyle = alpha(C.yellow, a);
+      ctx.lineWidth = 8 * a + 2;
+      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${a})`;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+      sparkle(b.x2, b.y2, 7 * a + 2, a);
+    }
+
+    // Confetti
+    for (const p of particles) {
+      const a = Math.max(0, Math.min(1, p.life / p.max * 1.5));
+      if (p.ring) {
+        ctx.strokeStyle = `rgba(255,255,255,${a})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+        continue;
+      }
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.scale(1, Math.cos(p.rot * 1.7));   // flutter
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+
+    drawCannon();
+
+    // Floating words: chunky, outlined, popping in
+    ctx.textBaseline = 'middle';
+    for (const f of floaters) {
+      const t = 1 - f.life / f.max;
+      const s = f.size * (t < 0.12 ? 0.6 + t / 0.12 * 0.5 : t < 0.2 ? 1.1 - (t - 0.12) / 0.08 * 0.1 : 1);
+      ctx.globalAlpha = Math.min(1, f.life / f.max * 2);
+      ctx.font = f.deva ? `800 ${s}px ${DEVA_FONT}` : `${s}px ${DISPLAY_FONT}`;
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Math.max(4, s * 0.22);
+      ctx.strokeStyle = '#fff';
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.globalAlpha = 1;
+    }
+
+    // Ouch flash
+    if (hurt > 0) {
+      const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      v.addColorStop(0, alpha(C.red, 0));
+      v.addColorStop(1, alpha(C.red, 0.4 * hurt));
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+
+  // A friendly round cannon whose eyes follow its target. It grins when it hits and
+  // makes an "o" when it misses or gets hurt.
+  function drawCannon() {
+    const p = gunPivot();
+    const outline = C.ink;
+    // Barrel
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(gunAngle + Math.PI / 2);
+    const back = recoil * 8;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = outline;
+    ctx.fillStyle = C.pink;
+    roundRect(-10, -BARREL + back, 20, BARREL - 8, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = gunFlash > 0 ? C.red : '#fff';
+    roundRect(-13, -BARREL - 6 + back, 26, 12, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // Body
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = outline;
+    ctx.fillStyle = C.yellow;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 28, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.blue;
+    roundRect(p.x - 46, p.y, 92, 16, 8);
+    ctx.fill(); ctx.stroke();
+    for (const wx of [-30, 0, 30]) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(p.x + wx, p.y + 8, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Eyes look where the barrel points; a blink every few seconds
+    const blink = (clock % 3.4) < 0.12;
+    const lx = Math.cos(gunAngle) * 2.5, ly = Math.sin(gunAngle) * 2.5;
+    for (const ex of [-9, 9]) {
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(p.x + ex, p.y - 13, 6, blink ? 1 : 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = outline; ctx.stroke();
+      if (!blink) {
+        ctx.fillStyle = outline;
+        ctx.beginPath(); ctx.arc(p.x + ex + lx, p.y - 13 + ly, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Mouth
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = outline;
+    ctx.beginPath();
+    if (gunFlash > 0) { ctx.fillStyle = outline; ctx.ellipse(p.x, p.y - 3, 3.5, 4.5, 0, 0, Math.PI * 2); ctx.fill(); }
+    else if (happy > 0) { ctx.arc(p.x, p.y - 6, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+    else { ctx.arc(p.x, p.y - 5, 4, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); }
+  }
+
+  // =====================================================================
+  // Loop
+  // =====================================================================
+  let last = performance.now();
+  function frame(t) {
+    const dt = Math.min(0.05, (t - last) / 1000);
+    last = t;
+    if (W > 0 && H > 0) {
+      if (state === 'playing') update(dt);
+      if (state !== 'paused') updateFx(dt);
+      draw();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // Puts every fixed label in the chosen language. Screens built later read T() themselves.
+  function applyLang() {
+    const t = T();
+    document.body.classList.toggle('lang-hi', isHi());
+    document.documentElement.lang = lang;
+    document.title = t.name;
+    ['lblScore', 'lblLevel', 'lblCombo', 'lblLives'].forEach((id, i) => { $(id).textContent = t.hud[i]; });
+    pauseBtn.setAttribute('aria-label', t.pause);
+    $('keys').setAttribute('aria-label', t.keys);
+    renderMute();
+  }
+  function setLang(l) {
+    lang = l;
+    store.set('ab2-lang', lang);
+    applyLang();
+    updateHud();
+    showMenu('home');
+  }
+
+  applyLang();
+  loadBest();
+  buildKeys();
+  updateHud();
+  showMenu('home');
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
